@@ -1,6 +1,6 @@
 # observer
 
-A templated observer mechanism as a header-only library that is inspired by Qt's signals and slots.
+A C++17 templated observer mechanism as a header-only library that is inspired by Qt's signals and slots.
 
 ## Features
 
@@ -9,10 +9,6 @@ Highlights of this library are:
 * Defining the subject's notification values by variadic template parameters.
 * Connect all kinds of callables to a subject like member functions, lambdas, functors and free functions.
 * Connected callables can accept _less_ parameters than the subject provides.
-
-## Requirements
-
-* C++17 compliant compiler.
 
 ## Examples
 
