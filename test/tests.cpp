@@ -1,26 +1,51 @@
-#include "observer.h"
+#include "../src/observer.h"
 #include <iostream>
 #include <string>
+
+static int total_checks  = 0;
+static int failed_checks = 0;
+
+static bool report_failed_check( const char* const file, const int line, const char* const condition )
+{
+    std::cout << "check failed! (file " << file << ", line " << line << "): " << condition << std::endl;
+    ++failed_checks;
+    return false;
+}
+
+#define check( c ) do { ++total_checks; ( c ) || report_failed_check( __FILE__, __LINE__, #c ); } while( false );
 
 
 using namespace pg;
 
-
 ///////////////////////////////////////////////////////////////////////////////
-//               Functions and structs used by the examples                  //
+//                Functions and structs used by the tests                    //
 ///////////////////////////////////////////////////////////////////////////////
 
-void free_function_int( int i )
+static int free_function_int_val = -1;
+static void free_function_int( int i )
 {
-    std::cout << "free_function_int( int ) - " << i << std::endl;
+    free_function_int_val = i;
 }
-void free_function_void()
+
+static int free_function_void_val = 0;
+static void free_function_void()
 {
-    std::cout << "free_function_void()" << std::endl;
+    ++free_function_void_val;
+}
+
+static void free_function_reset()
+{
+    free_function_int_val  = -1;
+    free_function_void_val = 0;
 }
 
 struct member_observers
 {
+    int int_char_ival = -1;
+    int int_char_cval = -1;
+    int int_ival      = -1;
+    int void_val      = 0;
+
     member_observers( observer_owner& owner, subject< int, char > &subject_int_char )
     {
         owner.connect( subject_int_char, this, &member_observers::int_char );
@@ -30,17 +55,18 @@ struct member_observers
 
     void int_char( int i, char c )
     {
-        std::cout << "member_observers::int_char( int, char ) - " << i << ", " << c << std::endl;
+        int_char_ival = i;
+        int_char_cval = c;
     }
 
     void int_( int i )
     {
-        std::cout << "member_observers::int_( int ) - " << i << std::endl;
+        int_ival = i;
     }
 
     void void_()
     {
-        std::cout << "member_observers::void_()" << std::endl;
+        ++void_val;
     }
 };
 
@@ -52,221 +78,248 @@ struct member_observers_with_owner : private observer_owner, public member_obser
     {}
 };
 
-struct callable_int
-{
-    void operator()( int i )
-    {
-        std::cout << "callable::operator()( int ) - " << i << std::endl;
-    }
-};
-
-struct callable_void
-{
-    void operator()()
-    {
-        std::cout << "callable::operator()()" << std::endl;
-    }
-};
-
 
 ///////////////////////////////////////////////////////////////////////////////
-//                                 Examples                                  //
+//                                  Tests                                    //
 ///////////////////////////////////////////////////////////////////////////////
 
-static void free_function_observer_example()
+static void free_function_observer()
 {
-    std::cout << "--- Free function observer ---" << std::endl;
+    free_function_reset();
 
     observer_owner owner;
     subject< int > subject_int;
-    subject<>      subject_void;
+    subject        subject_void;
 
     owner.connect( subject_int, free_function_int );
     owner.connect( subject_int, free_function_void );
     owner.connect( subject_void, free_function_void );
 
-    std::cout << "> subject< int >::notify( 42 )" << std::endl;
     subject_int.notify( 42 );
+    check( free_function_int_val == 42 );
+    check( free_function_void_val == 1 );
 
-    std::cout << "> subject<>::notify()" << std::endl;
     subject_void.notify();
+    check( free_function_void_val == 2 );
 }
 
-static void lambda_function_observer_example()
+static void lambda_function_observer()
 {
-    std::cout << "--- Lambda function observer ---" << std::endl;
-
     observer_owner owner;
     subject< int > subject_int;
-    subject<>      subject_void;
+    subject        subject_void;
 
-    owner.connect( subject_int, []( int i ){ std::cout << "lambda( int ) - " << i << std::endl; } );
-    owner.connect( subject_int, []{ std::cout << "lambda()" << std::endl; } );
-    owner.connect( subject_void, []{ std::cout << "lambda()" << std::endl; } );
+    int lambda_int_val  = -1;
+    int lambda_void_val = 0;
 
-    std::cout << "> subject< int >::notify( 42 )" << std::endl;
+    owner.connect( subject_int, [ & ]( int i ){ lambda_int_val = i; } );
+    owner.connect( subject_int, [ & ]{ ++lambda_void_val; } );
+    owner.connect( subject_void, [ & ]{ ++lambda_void_val; } );
+
     subject_int.notify( 42 );
+    check( lambda_int_val == 42 );
+    check( lambda_void_val == 1 );
 
-    std::cout << "> subject<>::notify()" << std::endl;
     subject_void.notify();
+    check( lambda_void_val == 2 );
 }
 
-static void std_function_observer_example()
+static void std_function_observer()
 {
-    std::cout << "--- std::function observer ---" << std::endl;
-
     observer_owner owner;
     subject< int > subject_int;
-    subject<>      subject_void;
+    subject        subject_void;
 
-    std::function< void( int ) > std_function_int;
-    std::function< void() >      std_function_void;
+    int lambda_int_val  = -1;
+    int lambda_void_val = 0;
 
-    std_function_int  = []( int i ){ std::cout << "std::function< void( int ) > - " << i << std::endl; };
-    std_function_void = callable_void();
+    std::function< void( int ) > std_function_int  = [ & ]( int i ){ lambda_int_val = i; };
+    std::function< void() >      std_function_void = [ & ]{ ++lambda_void_val; };
 
     owner.connect( subject_int, std_function_int );
     owner.connect( subject_int, std_function_void );
     owner.connect( subject_void, std_function_void );
 
-    std::cout << "> subject< int >::notify( 30284 )" << std::endl;
-    subject_int.notify( 30284 );
+    subject_int.notify( 1337 );
+    check( lambda_int_val == 1337 );
+    check( lambda_void_val == 1 );
 
-    std::cout << "> subject<>::notify()" << std::endl;
     subject_void.notify();
+    check( lambda_void_val == 2 );
 }
 
-static void functor_observer_example()
+static void functor_observer()
 {
-    std::cout << "--- Functor observer ---" << std::endl;
+    struct callable_int
+    {
+        int &val;
+
+        callable_int( int &i )
+            : val( i )
+        {}
+
+        void operator()( int i )
+        {
+            val = i;
+        }
+    };
+
+    struct callable_void
+    {
+        int &val;
+
+        callable_void( int &i )
+            : val( i )
+        {}
+
+        void operator()()
+        {
+            ++val;
+        }
+    };
 
     observer_owner owner;
     subject< int > subject_int;
 
-    callable_int  functor_observer_int;
-    callable_void functor_observer_void;
+    int int_val  = -1;
+    int void_val = 0;
 
-    owner.connect( subject_int, functor_observer_int );
-    owner.connect( subject_int, functor_observer_void );
+    owner.connect( subject_int, callable_int( int_val ) );
+    owner.connect( subject_int, callable_void( void_val ) );
 
-    std::cout << "> subject< int >::notify( 1003 )" << std::endl;
     subject_int.notify( 1003 );
-
-    std::cout << "> subject< int >::notify( 1003 )" << std::endl;
-    subject_int.notify( 1003 );
+    check( int_val == 1003 );
+    check( void_val == 1 );
 }
 
-static void member_function_observer_example()
+static void member_function_observer()
 {
-    std::cout << "--- Member function observer ---" << std::endl;
-
     subject< int, char >        subject_int_char;
     member_observers_with_owner member_observers_with_owner_( subject_int_char );
 
-    std::cout << "> subject< int, char >::notify( 1337, 'Q' )" << std::endl;
     subject_int_char.notify( 1337, 'Q' );
+    check( member_observers_with_owner_.int_char_ival == 1337 );
+    check( member_observers_with_owner_.int_char_cval == 'Q' );
+    check( member_observers_with_owner_.int_ival == 1337 );
+    check( member_observers_with_owner_.void_val == 1 );
 }
 
-static void subject_subject_observer_example()
+static void subject_subject_observer()
 {
-    std::cout << "--- Subject subject observer ---" << std::endl;
-
     observer_owner       owner;
     subject< int, char > subject_int_char1;
     subject< int, char > subject_int_char2;
     subject< int >       subject_int;
-    subject<>            subject_void;
+    subject              subject_void;
 
-    owner.connect( subject_int_char1, []( int i, char c ){ std::cout << "lambda( int, char ) @ subject_int_char1 - " << i << ", " << c << std::endl; } );
+    int  int_char_1_ival = -1;
+    char int_char_1_cval = '\0';
+    int  int_char_2_ival = -1;
+    char int_char_2_cval = '\0';
+    int  int_val         = -1;
+    int  void_val        = 0;
+
+    owner.connect( subject_int_char1, [ & ]( int i, char c ){ int_char_1_ival = i; int_char_1_cval = c; } );
     owner.connect( subject_int_char1, subject_int_char2 );
-    owner.connect( subject_int_char2, []( int i, char c ){ std::cout << "lambda( int, char ) @ subject_int_char2 - " << i << ", " << c << std::endl; } );
+    owner.connect( subject_int_char2, [ & ]( int i, char c ){ int_char_2_ival = i; int_char_2_cval = c; } );
     owner.connect( subject_int_char2, subject_int );
-    owner.connect( subject_int, []( int i ){ std::cout << "lambda( int ) @ subject_int - " << i << std::endl; } );
+    owner.connect( subject_int, [ & ]( int i ){ int_val = i; } );
     owner.connect( subject_int, subject_void );
-    owner.connect( subject_void, []{ std::cout << "lambda() @ subject_void" << std::endl; } );
+    owner.connect( subject_void, [ & ]{ ++void_val; } );
 
-    std::cout << "> subject< int, char >::notify( 33, 'R' ) (subject_int_char1)" << std::endl;
     subject_int_char1.notify( 33, 'R' );
+    check( int_char_1_ival == 33 );
+    check( int_char_1_cval == 'R' );
+    check( int_char_2_ival == 33 );
+    check( int_char_2_cval == 'R' );
+    check( int_val == 33 );
+    check( void_val == 1 );
 }
 
-static void observer_owner_lifetime_example()
+static void observer_owner_lifetime()
 {
-    std::cout << "--- Observer owner lifetime ---" << std::endl;
-
     subject< int, char > subject_int_char;
+
+    int val = -1;
 
     {
         observer_owner   owner;
-        member_observers member_observers_( owner, subject_int_char );
 
-        std::cout << "> subject< int, char >::notify( 1701, 'J' )" << std::endl;
+        owner.connect( subject_int_char, [ & ]( int i ){ val = i; } );
+
         subject_int_char.notify( 1701, 'J' );
+        check( val == 1701 );
     }
 
-    std::cout << "> subject< int, char >::notify( 1701, 'J' )" << std::endl;
-    subject_int_char.notify( 1701, 'J' );
+    subject_int_char.notify( 1702, 'K' );
+    check( val == 1701 );
 }
 
-static void subject_lifetime_example()
+static void subject_lifetime()
 {
-    std::cout << "--- Subject lifetime ---" << std::endl;
     observer_owner owner;
+
+    int val_1 = 0;
+    int val_2 = 0;
 
     {
-        subject<> subject_void;
+        subject subject_void;
+        owner.connect( subject_void, [ & ]{ ++val_1; } );
 
-        owner.connect( subject_void, free_function_void );
-
-        std::cout << "> subject<>::notify()" << std::endl;
         subject_void.notify();
     }
+
+    subject<> subject_void;
+    owner.connect( subject_void, [ & ]{ ++val_2; } );
+
+    subject_void.notify();
+    check( val_1 == 1 );
+    check( val_2 == 1 );
 }
 
-static void observer_disconnect_example()
+static void observer_disconnect()
 {
-    std::cout << "--- Observer disconnect ---" << std::endl;
-
     observer_owner owner;
-    subject<>      subject_void;
+    subject        subject_void;
 
-    const auto handle = owner.connect( subject_void, free_function_void );
+    int val = 0;
 
-    std::cout << "> subject<>::notify()" << std::endl;
+    const auto handle = owner.connect( subject_void, [ & ]{ ++val; } );
+
     subject_void.notify();
+    check( val == 1 );
 
     owner.disconnect( handle );
 
-    std::cout << "> subject<>::notify()" << std::endl;
     subject_void.notify();
+    check( val == 1 );
 }
 
-static void subject_blocker_example()
+static void block_subject()
 {
-    std::cout << "--- Subject blocker ---" << std::endl;
-
     observer_owner owner;
-    subject<>      subject_void;
+    subject        subject_void;
 
-    owner.connect( subject_void, free_function_void );
+    int val = 0;
 
-    std::cout << "> subject<>::notify()" << std::endl;
+    owner.connect( subject_void, [ & ]{ ++val; } );
+
     subject_void.notify();
+    check( val == 1 );
 
     {
         subject_blocker< subject<> > blocker( subject_void );
 
-        std::cout << "> subject<>::notify()" << std::endl;
         subject_void.notify();
+        check( val == 1 );
     }
 
-    std::cout << "> subject<>::notify()" << std::endl;
     subject_void.notify();
+    check( val == 2 );
 }
 
-static void type_compatibility_example()
+static void type_compatibility()
 {
-    std::cout << "--- Type compatibility example---" << std::endl;
-
     observer_owner owner;
     subject< std::string >         subject_string;
     subject< const std::string >   subject_const_string;
@@ -274,10 +327,28 @@ static void type_compatibility_example()
     subject< char * >              subject_p_char;
     subject< const char * >        subject_const_p_char;
 
-    const auto str           = []( std::string str ){ std::cout << "lambda( std::string ) - " << str << std::endl; };
-    const auto const_str_ref = []( const std::string& str ){ std::cout << "lambda( const std::string & ) - " << str << std::endl; };
-    const auto p_char        = []( char *str ){ std::cout << "lambda( char * ) - " << str << std::endl; };
-    const auto const_p_char  = []( const char *str ){ std::cout << "lambda( const char * ) - " << str << std::endl; };
+    int int_str              = 0;
+    int int_const_string_ref = 0;
+    int int_p_char           = 0;
+    int int_const_p_char     = 0;
+
+    const auto int_reset = [ & ]
+    {
+        int_str              = 0;
+        int_const_string_ref = 0;
+        int_p_char           = 0;
+        int_const_p_char     = 0;
+    };
+
+    std::string       string_value        = "Foobar";
+    const std::string const_string_value  = "Foobar";
+    char              sz_char[]           = "Foobar";
+    const char        *const_p_char_value = "Foobar";
+
+    const auto str           = [ & ]( std::string str ){ if( str == const_string_value ) ++int_str; };
+    const auto const_str_ref = [ & ]( const std::string& str ){ if( str == const_string_value ) ++int_const_string_ref; };
+    const auto p_char        = [ & ]( char *str ){ if( str == const_string_value ) ++int_p_char; };
+    const auto const_p_char  = [ & ]( const char *str ){ if( str == const_string_value ) ++int_const_p_char; };
 
     owner.connect( subject_string, str           );
     owner.connect( subject_string, const_str_ref );
@@ -297,54 +368,63 @@ static void type_compatibility_example()
     owner.connect( subject_const_p_char, const_str_ref );
     owner.connect( subject_const_p_char, const_p_char  );
 
-    std::string       string_value        = "Bar";
-    const std::string const_string_value  = "Baz";
-    char              sz_char[]           = "Blah";
-    const char        *const_p_char_value = "Bhoo";
-
-    std::cout << "> subject< std::string >::notify()" << std::endl;
-    subject_string.notify( "Foo" );
+    subject_string.notify( "Foobar" );
     subject_string.notify( string_value );
     subject_string.notify( const_string_value );
     subject_string.notify( sz_char );
     subject_string.notify( const_p_char_value );
+    check( int_str == 5 );
+    check( int_const_string_ref == 5 );
+    int_reset();
 
-    std::cout << "> subject< const std::string >::notify()" << std::endl;
-    subject_const_string.notify( "Foo" );
+    subject_const_string.notify( "Foobar" );
     subject_const_string.notify( string_value );
     subject_const_string.notify( const_string_value );
     subject_const_string.notify( sz_char );
     subject_const_string.notify( const_p_char_value );
+    check( int_str == 5 );
+    check( int_const_string_ref == 5 );
+    int_reset();
 
-    std::cout << "> subject< const std::string & >::notify()" << std::endl;
-    subject_const_string_ref.notify( "Foo" );
+    subject_const_string_ref.notify( "Foobar" );
     subject_const_string_ref.notify( string_value );
     subject_const_string_ref.notify( const_string_value );
     subject_const_string_ref.notify( sz_char );
     subject_const_string_ref.notify( const_p_char_value );
+    check( int_str == 5 );
+    check( int_const_string_ref == 5 );
+    int_reset();
 
-    std::cout << "> subject< char * >::notify()" << std::endl;
     subject_p_char.notify( sz_char );
+    check( int_str == 1 );
+    check( int_const_string_ref == 1 );
+    check( int_p_char == 1 );
+    check( int_const_p_char == 1 );
+    int_reset();
 
-    std::cout << "> subject< const char * >::notify()" << std::endl;
-    subject_const_p_char.notify( "Foo"              );
-    subject_const_p_char.notify( sz_char            );
+    subject_const_p_char.notify( "Foobar" );
+    subject_const_p_char.notify( sz_char );
     subject_const_p_char.notify( const_p_char_value );
+    check( int_str == 3 );
+    check( int_const_string_ref == 3 );
+    check( int_const_p_char == 3 );
 }
 
 int main( int /* argc */, char * /* argv */[] )
 {
-    free_function_observer_example();
-    lambda_function_observer_example();
-    std_function_observer_example();
-    functor_observer_example();
-    member_function_observer_example();
-    subject_subject_observer_example();
-    observer_owner_lifetime_example();
-    subject_lifetime_example();
-    observer_disconnect_example();
-    subject_blocker_example();
-    type_compatibility_example();
+    free_function_observer();
+    lambda_function_observer();
+    std_function_observer();
+    functor_observer();
+    member_function_observer();
+    subject_subject_observer();
+    observer_owner_lifetime();
+    subject_lifetime();
+    observer_disconnect();
+    block_subject();
+    type_compatibility();
 
-    return 0;
+    std::cout << "Total tests: " << total_checks << ", Tests failed: " << failed_checks << std::endl;
+
+    return failed_checks ? 1 : 0;
 }
