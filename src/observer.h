@@ -1,6 +1,6 @@
 // MIT License
 //
-// Copyright (c) 2017 PG1003
+// Copyright (c) 2019 PG1003
 //
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
@@ -128,10 +128,12 @@ public:
 template< typename ...A >
 class subject
 {
+    using observer_type = pg_detail::abstract_observer< A... >;
+
     friend class pg_detail::abstract_observer< A... >;
     friend class subject_blocker< subject< A... > >;
 
-    std::vector< pg_detail::abstract_observer< A... > * > m_observers;
+    std::vector< observer_type * > m_observers;
 
     void remove_observer( observer_handle *o ) noexcept
     {
@@ -290,8 +292,8 @@ void observer_handle::remove_from_owner() noexcept
 template< typename S >
 class subject_blocker
 {
-    S                          &m_subject;
-    decltype( S::m_observers ) m_observers;
+    S                                          &m_subject;
+    std::vector< typename S::observer_type * > m_observers;
 
 public:
     subject_blocker( S &subject ) noexcept
