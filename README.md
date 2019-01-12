@@ -1,6 +1,14 @@
 # observer
 
-A C++17 templated observer mechanism as a header-only library that is inspired by Qt's sinals and slots.
+A C++17 templated observer mechanism as a header-only library that is inspired by Qt's signals and slots.
+
+## Features
+
+Highlights of this library are:
+
+* Defining the subject's notification values by variadic template parameters.
+* Connect all kinds of callables to a subject like member functions, lambdas, functors and free functions.
+* Connected callables can accept _less_ parameters than the subject provides.
 
 ## Examples
 
@@ -34,8 +42,8 @@ The output is:
 
 So, what happened here?
 
-There are two objects declared in the ```main``` fuction:
-* ```owner``` manages the connection between subjects and observers.
+There are two objects declared in the ```main``` function:
+* ```owner``` manages lifetime of the connection between subjects and observers.
 * ```hello_subject``` which will be used to emit notifications to observers that are connected.
 
 Next, the owner connects ```hello_function``` observer function to the ```hello_subject```.
@@ -48,7 +56,7 @@ This example shows some more advanced features of the library:
 * Objects can inherit from ```pg::observer_owner```.
 * Connecting member functions to a subject.
 * Connecting lambdas to a subject.
-* Connecting observer functions that accepts _fewer_ arguments than the subject's notify passes on.
+* Connecting observer functions that accepts _less_ arguments than the subject's notify passes on.
 
 ``` c++
 struct bar : public pg::observer_owner
@@ -81,3 +89,4 @@ int main( int /* argc */, char * /* argv */[] )
 The output is:
 > PG1003    
 > Hello PG!
+
