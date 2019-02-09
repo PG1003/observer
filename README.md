@@ -1,6 +1,6 @@
 # observer
 
-A C++17 templated observer mechanism as a header-only library that is inspired by Qt's signals and slots.
+A templated observer mechanism as a header-only library that is inspired by Qt's signals and slots.
 
 ## Features
 
@@ -10,10 +10,16 @@ Highlights of this library are:
 * Connect all kinds of callables to a subject like member functions, lambdas, functors and free functions.
 * Connected callables can accept _less_ parameters than the subject provides.
 
+## Requirements
+
+* C++17 compliant compiller.
+
 ## Examples
 
-This is a short introduction about the features and usage of this library.    
-See [observer_demo.cpp](https://github.com/PG1003/observer/blob/master/observer_demo.cpp) for a full reference.
+In the [examples folder](https://github.com/PG1003/observer/blob/master/examples) you will find example programs that show the features and usage of this library.
+You can also take a peek in [tests.cpp](https://github.com/PG1003/observer/blob/master/test/tests.cpp).
+
+The next two examples shown here are a short introduction of this library.
 
 ### Example 1
 
@@ -28,7 +34,7 @@ void hello_function()
 int main( int /* argc */, char * /* argv */[] )
 {
     pg::observer_owner owner;
-    pg::subject<>      hello_subject;
+    pg::subject        hello_subject;
     
     owner.connect( hello_subject, hello_function );
     

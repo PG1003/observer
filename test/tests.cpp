@@ -1,4 +1,4 @@
-#include "../src/observer.h"
+#include <observer.h>
 #include <iostream>
 #include <string>
 
@@ -269,7 +269,7 @@ static void subject_lifetime()
         subject_void.notify();
     }
 
-    subject<> subject_void;
+    subject subject_void;
     owner.connect( subject_void, [ & ]{ ++val_2; } );
 
     subject_void.notify();
@@ -308,7 +308,7 @@ static void block_subject()
     check( val == 1 );
 
     {
-        subject_blocker< subject<> > blocker( subject_void );
+        subject_blocker blocker( subject_void );
 
         subject_void.notify();
         check( val == 1 );
