@@ -33,7 +33,7 @@
 namespace pg
 {
 
-namespace pg_detail
+namespace detail
 {
 
 // https://stackoverflow.com/a/27867127
@@ -51,7 +51,7 @@ struct function_arity< R ( C:: * )( A... ) const > : std::integral_constant< uns
 
 
 template< int N, typename TUPLE >
-constexpr decltype( auto ) get_first( TUPLE&& t )
+constexpr decltype( auto ) get_first( TUPLE&& t ) noexcept
 {
     if constexpr( N == -1 )
     {
@@ -65,10 +65,10 @@ constexpr decltype( auto ) get_first( TUPLE&& t )
 }
 
 template< int N, typename ...A >
-constexpr decltype( auto ) get_first_n( A && ... args )
+constexpr decltype( auto ) get_first_n( A && ... args ) noexcept
 {
     static_assert( N <= sizeof...( args ) );
-    return get_first< N - 1, std::tuple< A... > >( std::tuple< A... >( std::forward< A >( args )... ) );
+    return get_first< N - 1, const std::tuple< A... > >( std::tuple< A... >( std::forward< A >( args )... ) );
 }
 
 }
@@ -101,7 +101,7 @@ public:
     virtual ~observer_handle() noexcept = default;
 };
 
-namespace pg_detail
+namespace detail
 {
 
 template< typename ...A >
@@ -128,10 +128,11 @@ public:
 template< typename ...A >
 class subject
 {
-    using observer_type = pg_detail::abstract_observer< A... >;
+    using observer_type = detail::abstract_observer< A... >;
 
-    friend class pg_detail::abstract_observer< A... >;
+    friend class detail::abstract_observer< A... >;
     friend class subject_blocker< subject< A... > >;
+    friend class observer_owner;
 
     std::vector< observer_type * > m_observers;
 
@@ -139,14 +140,19 @@ class subject
     {
         // Iterate reversed over the m_observers since we expect that observers that
         // are frequently connected and disconnected resides at the end of the vector.
-        auto it_find = std::find_if( m_observers.rbegin(), m_observers.rend(), [o]( const auto &o1 )
+        auto it_find = std::find_if( m_observers.crbegin(), m_observers.crend(), [o]( const auto &o1 )
         {
             return static_cast< observer_handle * >( o1 ) == o;
         } );
-        if( it_find != m_observers.rend() )
+        if( it_find != m_observers.crend() )
         {
             m_observers.erase( ( ++it_find ).base() );
         }
+    }
+
+    void add_observer( detail::abstract_observer< A... > *o ) noexcept
+    {
+        m_observers.push_back( o );
     }
 
 public:
@@ -164,11 +170,6 @@ public:
         {
             o->notify( args... );
         }
-    }
-
-    void add_observer( pg_detail::abstract_observer< A... > *o ) noexcept
-    {
-        m_observers.push_back( o );
     }
 };
 
@@ -217,7 +218,9 @@ public:
     template< typename I, typename R, typename ...As, typename ...Ao >
     observer_handle * connect( subject< As... > &s, I * instance, R ( I::*function )( Ao... ) ) noexcept
     {
-        using namespace pg_detail;
+        using namespace detail;
+
+        static_assert( sizeof...( As ) >= sizeof...( Ao ) );
 
         class observer final : public abstract_observer< As ... >
         {
@@ -248,7 +251,9 @@ public:
     template< typename F, typename ...As >
     observer_handle * connect( subject< As... > &s, F function ) noexcept
     {
-        using namespace pg_detail;
+        using namespace detail;
+
+        static_assert( sizeof...( As ) >= function_arity< F >{} );
 
         class observer final : public abstract_observer< As... >
         {
@@ -272,6 +277,8 @@ public:
     template< typename ...As1, typename ...As2 >
     observer_handle * connect( subject< As1... > &s1, subject< As2... > &s2 ) noexcept
     {
+        static_assert( sizeof...( As1 ) >= sizeof...( As2 ) );
+
         return connect( s1, [&]( As2 &&... args ){ s2.notify( std::forward< As2 >( args )... ); } );
     }
 
