@@ -1,18 +1,30 @@
 # observer
 
 A templated observer mechanism as a header-only library that is inspired by Qt's signals and slots.
+This also includes connecting observer functions that accept _less_ parameters than the subject provides.
 
 ## Features
 
 Highlights of this library are:
 
+* Connected callables can accept _less_ parameters than the subject provides.
 * Defining the subject's notification values by variadic template parameters.
 * Connect all kinds of callables to a subject like member functions, lambdas, functors and free functions.
-* Connected callables can accept _less_ parameters than the subject provides.
 
 ## Requirements
 
-* C++17 compliant compiller.
+* C++14 compliant compiller.
+
+Although C++14 is required, C++17 introduced [CTAD](https://en.cppreference.com/w/cpp/language/class_template_argument_deduction) which simplifies the use of ```pg::subject_blocker``` and makes defining a parameterless ```pg::subject``` prettier.
+
+``` c++
+pg::subject<> foo;  // C++14
+pg::subject   foo;  // C++17
+
+pg::subject< int > bar;
+pg::subject_blocker< pg::subject< int > > blocker( bar );   // C++14
+pg::subject_blocker                       blocker( bar );   // C++17
+```
 
 ## Examples
 
@@ -34,7 +46,7 @@ void hello_function()
 int main( int /* argc */, char * /* argv */[] )
 {
     pg::observer_owner owner;
-    pg::subject        hello_subject;
+    pg::subject<>      hello_subject;
     
     owner.connect( hello_subject, hello_function );
     
