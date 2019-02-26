@@ -4,10 +4,10 @@
 int main( int /* argc */, char * /* argv */[] )
 {
     pg::observer_owner owner;
-    pg::subject        s1;
-    pg::subject        s2;
-    pg::subject        sy;
-    pg::subject        s;
+    pg::subject<>      s1;
+    pg::subject<>      s2;
+    pg::subject<>      sy;
+    pg::subject<>      s;
 
     // Connect sy both to s1 and s2
     owner.connect( s1, sy );

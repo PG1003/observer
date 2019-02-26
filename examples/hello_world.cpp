@@ -9,7 +9,7 @@ void hello_world()
 int main( int /* argc */, char * /* argv */[] )
 {
     pg::observer_owner owner;
-    pg::subject        s;
+    pg::subject<>      s;
 
     owner.connect( s, hello_world );
 

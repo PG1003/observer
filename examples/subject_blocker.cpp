@@ -11,7 +11,7 @@ int main( int /* argc */, char * /* argv */[] )
     s.notify( "Hello World!" );
 
     {
-        pg::subject_blocker blocker( s );
+        pg::subject_blocker< pg::subject< const char* > > blocker( s );
         s.notify( "Blocked!" );
     }
 

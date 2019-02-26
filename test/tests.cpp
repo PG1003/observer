@@ -89,7 +89,7 @@ static void free_function_observer()
 
     observer_owner owner;
     subject< int > subject_int;
-    subject        subject_void;
+    subject<>        subject_void;
 
     owner.connect( subject_int, free_function_int );
     owner.connect( subject_int, free_function_void );
@@ -107,7 +107,7 @@ static void lambda_function_observer()
 {
     observer_owner owner;
     subject< int > subject_int;
-    subject        subject_void;
+    subject<>        subject_void;
 
     int lambda_int_val  = -1;
     int lambda_void_val = 0;
@@ -128,7 +128,7 @@ static void std_function_observer()
 {
     observer_owner owner;
     subject< int > subject_int;
-    subject        subject_void;
+    subject<>        subject_void;
 
     int lambda_int_val  = -1;
     int lambda_void_val = 0;
@@ -210,7 +210,7 @@ static void subject_subject_observer()
     subject< int, char > subject_int_char1;
     subject< int, char > subject_int_char2;
     subject< int >       subject_int;
-    subject              subject_void;
+    subject<>              subject_void;
 
     int  int_char_1_ival = -1;
     char int_char_1_cval = '\0';
@@ -263,13 +263,13 @@ static void subject_lifetime()
     int val_2 = 0;
 
     {
-        subject subject_void;
+        subject<> subject_void;
         owner.connect( subject_void, [ & ]{ ++val_1; } );
 
         subject_void.notify();
     }
 
-    subject subject_void;
+    subject<> subject_void;
     owner.connect( subject_void, [ & ]{ ++val_2; } );
 
     subject_void.notify();
@@ -280,7 +280,7 @@ static void subject_lifetime()
 static void observer_disconnect()
 {
     observer_owner owner;
-    subject        subject_void;
+    subject<>      subject_void;
 
     int val = 0;
 
@@ -298,7 +298,7 @@ static void observer_disconnect()
 static void block_subject()
 {
     observer_owner owner;
-    subject        subject_void;
+    subject<>      subject_void;
 
     int val = 0;
 
@@ -308,7 +308,7 @@ static void block_subject()
     check( val == 1 );
 
     {
-        subject_blocker blocker( subject_void );
+        subject_blocker< subject<> > blocker( subject_void );
 
         subject_void.notify();
         check( val == 1 );

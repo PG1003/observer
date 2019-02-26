@@ -4,7 +4,7 @@
 int main( int /* argc */, char * /* argv */[] )
 {
     pg::observer_owner owner;
-    pg::subject        s;
+    pg::subject<>      s;
 
     const auto handle = owner.connect( s, []{ std::cout << "Hello World!" << std::endl; } );
 

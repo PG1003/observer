@@ -23,7 +23,6 @@
 
 #include <set>
 #include <vector>
-#include <tuple>
 #include <algorithm>
 #include <memory>
 #include <functional>
@@ -38,37 +37,42 @@ namespace detail
 
 // https://stackoverflow.com/a/27867127
 template< typename T >
-struct function_arity : function_arity< decltype( &T::operator() ) > {};
+struct invoke_helper : invoke_helper< decltype( &T::operator() ) > {};
 
-template< typename R, typename ...A>
-struct function_arity <R ( * )( A... ) > : std::integral_constant< unsigned, sizeof...( A ) > {};
+template< typename R, typename ...A >
+struct invoke_helper< R ( * )( A... ) >
+{
+    template< typename F, typename ...Ar >
+    static void invoke( F function, A... args, Ar... )
+    {
+        function( std::forward< A >( args )... );
+    }
+};
 
 template< typename R, typename C, typename ...A >
-struct function_arity< R ( C:: * )( A... ) > : std::integral_constant< unsigned, sizeof...( A ) > {};
+struct invoke_helper< R ( C:: * )( A... ) >
+{
+    template< typename F, typename ...Ar >
+    static void invoke( F function, A... args, Ar... )
+    {
+        function( std::forward< A >( args )... );
+    }
+};
 
 template< typename R, typename C, typename ...A >
-struct function_arity< R ( C:: * )( A... ) const > : std::integral_constant< unsigned, sizeof...( A ) > {};
-
-
-template< int N, typename TUPLE >
-constexpr decltype( auto ) get_first( TUPLE&& t ) noexcept
+struct invoke_helper< R ( C:: * )( A... ) const >
 {
-    if constexpr( N == -1 )
+    template< typename F, typename ...Ar >
+    static void invoke( F function, A... args, Ar... )
     {
-        ( void )t;    // Silence warnings about unused parameter
-        return std::tuple<>();
+        function( std::forward< A >( args )... );
     }
-    else
-    {
-        return std::tuple_cat( get_first< N - 1, TUPLE >( std::forward< TUPLE >( t ) ), std::make_tuple( std::get< N >( t ) ) );
-    }
-}
+};
 
-template< int N, typename ...A >
-constexpr decltype( auto ) get_first_n( A && ... args ) noexcept
+template< typename F, typename ...A >
+inline void invoke( F function, A... args )
 {
-    static_assert( N <= sizeof...( args ) );
-    return get_first< N - 1, const std::tuple< A... > >( std::tuple< A... >( std::forward< A >( args )... ) );
+    invoke_helper< F >::invoke( function, std::forward< A >( args )... );
 }
 
 }
@@ -218,18 +222,14 @@ public:
     template< typename I, typename R, typename ...As, typename ...Ao >
     observer_handle * connect( subject< As... > &s, I * instance, R ( I::*function )( Ao... ) ) noexcept
     {
-        using namespace detail;
-
-        static_assert( sizeof...( As ) >= sizeof...( Ao ) );
-
-        class observer final : public abstract_observer< As ... >
+        class observer final : public detail::abstract_observer< As ... >
         {
             I *           m_instance;
             R( I::* const m_function )( Ao... );
 
         public:
             observer( observer_owner &owner, subject< As... > &s, I * const instance, R ( I::*f )( Ao... ) ) noexcept
-                    : abstract_observer< As... >( owner, s )
+                    : detail::abstract_observer< As... >( owner, s )
                     , m_instance( instance )
                     , m_function( f )
             {}
@@ -241,7 +241,7 @@ public:
 
             virtual void notify( As... args ) override
             {
-                std::apply( *this, get_first_n< sizeof...( Ao ) >( std::forward< As >( args )... ) );
+                detail::invoke( *this, std::forward< As >( args )... );
             }
         };
 
@@ -251,23 +251,19 @@ public:
     template< typename F, typename ...As >
     observer_handle * connect( subject< As... > &s, F function ) noexcept
     {
-        using namespace detail;
-
-        static_assert( sizeof...( As ) >= function_arity< F >{} );
-
-        class observer final : public abstract_observer< As... >
+        class observer final : public detail::abstract_observer< As... >
         {
             F m_function;
 
         public:
             observer( observer_owner &owner, subject< As... > &s, F f ) noexcept
-                    : abstract_observer< As... >( owner, s )
+                    : detail::abstract_observer< As... >( owner, s )
                     , m_function( f )
             {}
 
             virtual void notify( As... args ) override
             {
-                std::apply( m_function, get_first_n< function_arity< F >{} >( std::forward< As >( args )... ) );
+                detail::invoke( m_function, std::forward< As >( args )... );
             }
         };
 
@@ -277,8 +273,6 @@ public:
     template< typename ...As1, typename ...As2 >
     observer_handle * connect( subject< As1... > &s1, subject< As2... > &s2 ) noexcept
     {
-        static_assert( sizeof...( As1 ) >= sizeof...( As2 ) );
-
         return connect( s1, [&]( As2 &&... args ){ s2.notify( std::forward< As2 >( args )... ); } );
     }
 
