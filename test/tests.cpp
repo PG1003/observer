@@ -1,6 +1,7 @@
 #include <observer.h>
 #include <iostream>
 #include <string>
+#include <functional>
 
 static int total_checks  = 0;
 static int failed_checks = 0;
