@@ -1,30 +1,21 @@
 # observer
 
-A templated observer mechanism as a header-only library that is inspired by Qt's signals and slots.
-This also includes connecting observer functions that accept _less_ parameters than the subject provides.
+A flexible observer mechanism as a header-only library with features that are inspired by Qt's signals and slots.
+This includes connecting observer functions that accept _less_ parameters than the subject provides.
 
 ## Features
 
-Highlights of this library are:
-
 * Connected callables can accept _less_ parameters than the subject provides.
+* Manages lifetime of the connection between the subject and observer. 
 * Defining the subject's notification values by variadic template parameters.
-* Connect all kinds of callables to a subject like member functions, lambdas, functors and free functions.
+* Connect all kinds of callables to a subject; member functions, lambdas, functors, ```std::function``` and free functions.
+* Chaining subjects; a subject can notify other subjects.
+* Provides a mechanism to block temporarily all notifications from a specific subject.
+* [1 header file](https://github.com/PG1003/observer/blob/master/src/observer.h) that includes only headers from the standard template library.
 
 ## Requirements
 
 * C++14 compliant compiller.
-
-Although C++14 is required, C++17 introduced [CTAD](https://en.cppreference.com/w/cpp/language/class_template_argument_deduction) which simplifies the use of ```pg::subject_blocker``` and makes defining a parameterless ```pg::subject``` prettier.
-
-``` c++
-pg::subject<> foo;  // C++14
-pg::subject   foo;  // C++17
-
-pg::subject< int > bar;
-pg::subject_blocker< pg::subject< int > > blocker( bar );   // C++14
-pg::subject_blocker                       blocker( bar );   // C++17
-```
 
 ## Examples
 
@@ -108,3 +99,15 @@ The output is:
 > PG1003    
 > Hello PG!
 
+## C++17 CTAD
+
+Although C++14 is required, C++17 introduced [CTAD](https://en.cppreference.com/w/cpp/language/class_template_argument_deduction) which simplifies the use of ```pg::subject_blocker``` and makes defining a parameterless ```pg::subject``` prettier.
+
+``` c++
+pg::subject<> foo;  // C++14
+pg::subject   foo;  // C++17
+
+pg::subject< int > bar;
+pg::subject_blocker< pg::subject< int > > blocker( bar );   // C++14
+pg::subject_blocker                       blocker( bar );   // C++17
+```
