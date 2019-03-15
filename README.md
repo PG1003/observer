@@ -17,6 +17,8 @@ This includes connecting observer functions that accept _less_ parameters than t
 
 * C++14 compliant compiller.
 
+There is an experimental C++11 branch for platforms that do not support the required C++14 features.
+
 ## Examples
 
 In the [examples folder](https://github.com/PG1003/observer/blob/master/examples) you will find example programs that show the features and usage of this library.
@@ -107,7 +109,6 @@ Although C++14 is required, C++17 introduced [CTAD](https://en.cppreference.com/
 pg::subject<> foo;  // C++14
 pg::subject   foo;  // C++17
 
-pg::subject< int > bar;
-pg::subject_blocker< pg::subject< int > > blocker( bar );   // C++14
-pg::subject_blocker                       blocker( bar );   // C++17
+pg::subject_blocker< pg::subject<> > blocker( foo );   // C++14
+pg::subject_blocker                  blocker( foo );   // C++17
 ```
