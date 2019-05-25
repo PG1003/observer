@@ -42,8 +42,8 @@ struct invoke_helper : invoke_helper< decltype( &T::operator() ) > {};
 template< typename R, typename ...A >
 struct invoke_helper< R ( * )( A... ) >
 {
-    template< typename F, typename ...Ar >
-    static void invoke( F function, A... args, Ar... )
+    template< typename F >
+    static void invoke( F function, A... args, ... )
     {
         function( std::forward< A >( args )... );
     }
@@ -52,8 +52,8 @@ struct invoke_helper< R ( * )( A... ) >
 template< typename R, typename C, typename ...A >
 struct invoke_helper< R ( C:: * )( A... ) >
 {
-    template< typename F, typename ...Ar >
-    static void invoke( F function, A... args, Ar... )
+    template< typename F >
+    static void invoke( F function, A... args, ... )
     {
         function( std::forward< A >( args )... );
     }
@@ -62,8 +62,8 @@ struct invoke_helper< R ( C:: * )( A... ) >
 template< typename R, typename C, typename ...A >
 struct invoke_helper< R ( C:: * )( A... ) const >
 {
-    template< typename F, typename ...Ar >
-    static void invoke( F function, A... args, Ar... )
+    template< typename F >
+    static void invoke( F function, A... args, ... )
     {
         function( std::forward< A >( args )... );
     }
@@ -82,7 +82,7 @@ class observer_owner;
 template< typename ...A >
 class subject;
 
-template< typename SUBJECT >
+template< typename S >
 class subject_blocker;
 
 class observer_handle
@@ -227,6 +227,11 @@ public:
             I *           m_instance;
             R( I::* const m_function )( Ao... );
 
+            void invoke( Ao... args, ... )
+            {
+                ( m_instance->*m_function )( std::forward< Ao >( args )... );
+            }
+
         public:
             observer( observer_owner &owner, subject< As... > &s, I * const instance, R ( I::*f )( Ao... ) ) noexcept
                     : detail::abstract_observer< As... >( owner, s )
@@ -234,14 +239,9 @@ public:
                     , m_function( f )
             {}
 
-            void operator()( Ao && ... args )
-            {
-                ( m_instance->*m_function )( std::forward< Ao >( args )... );
-            }
-
             virtual void notify( As... args ) override
             {
-                detail::invoke( *this, std::forward< As >( args )... );
+                invoke( std::forward< As >( args )... );
             }
         };
 
