@@ -90,7 +90,7 @@ static void free_function_observer()
 
     observer_owner owner;
     subject< int > subject_int;
-    subject<>        subject_void;
+    subject<>      subject_void;
 
     owner.connect( subject_int, free_function_int );
     owner.connect( subject_int, free_function_void );
@@ -108,7 +108,7 @@ static void lambda_function_observer()
 {
     observer_owner owner;
     subject< int > subject_int;
-    subject<>        subject_void;
+    subject<>      subject_void;
 
     int lambda_int_val  = -1;
     int lambda_void_val = 0;
@@ -129,7 +129,7 @@ static void std_function_observer()
 {
     observer_owner owner;
     subject< int > subject_int;
-    subject<>        subject_void;
+    subject<>      subject_void;
 
     int lambda_int_val  = -1;
     int lambda_void_val = 0;
@@ -211,7 +211,7 @@ static void subject_subject_observer()
     subject< int, char > subject_int_char1;
     subject< int, char > subject_int_char2;
     subject< int >       subject_int;
-    subject<>              subject_void;
+    subject<>            subject_void;
 
     int  int_char_1_ival = -1;
     char int_char_1_cval = '\0';
