@@ -43,7 +43,7 @@ template< typename R, typename ...A >
 struct invoke_helper< R ( * )( A... ) >
 {
     template< typename F >
-    static void invoke( F function, A... args, ... )
+    static void invoke( const F function, A... args, ... )
     {
         function( std::forward< A >( args )... );
     }
@@ -63,14 +63,14 @@ template< typename R, typename C, typename ...A >
 struct invoke_helper< R ( C:: * )( A... ) const >
 {
     template< typename F >
-    static void invoke( F function, A... args, ... )
+    static void invoke( const F function, A... args, ... )
     {
         function( std::forward< A >( args )... );
     }
 };
 
 template< typename F, typename ...A >
-inline void invoke( F function, A... args )
+inline void invoke( const F function, A... args )
 {
     invoke_helper< F >::invoke( function, std::forward< A >( args )... );
 }
@@ -140,7 +140,7 @@ class subject
 
     std::vector< observer_type * > m_observers;
 
-    void remove_observer( observer_handle *o ) noexcept
+    void remove_observer( observer_handle * const o ) noexcept
     {
         // Iterate reversed over the m_observers since we expect that observers that
         // are frequently connected and disconnected resides at the end of the vector.
@@ -154,7 +154,7 @@ class subject
         }
     }
 
-    void add_observer( detail::abstract_observer< A... > *o ) noexcept
+    void add_observer( detail::abstract_observer< A... > * const o ) noexcept
     {
         m_observers.push_back( o );
     }
@@ -187,27 +187,25 @@ class observer_owner
         using handle_uptr    = std::unique_ptr< observer_handle >;
 
         bool operator()( const handle_uptr& lhs, const handle_uptr& rhs ) const noexcept { return lhs < rhs; }
-        bool operator()( const handle_uptr& lhs, observer_handle *rhs ) const noexcept { return lhs.get() < rhs; }
-        bool operator()( observer_handle *lhs, const handle_uptr& rhs ) const noexcept { return lhs < rhs.get(); }
+        bool operator()( const handle_uptr& lhs, const observer_handle * const rhs ) const noexcept { return lhs.get() < rhs; }
+        bool operator()( const observer_handle * const lhs, const handle_uptr& rhs ) const noexcept { return lhs < rhs.get(); }
     };
 
     std::set< std::unique_ptr< observer_handle >, observer_handle_ptr_comp > m_observers;
 
-    void remove_observer( observer_handle *o ) noexcept
+    void remove_observer( observer_handle * const o ) noexcept
     {
         auto it_find = m_observers.find( o );
         m_observers.erase( it_find );
     }
 
-    template< typename O, typename ...A >
-    observer_handle * connect( subject< A... > &s, std::unique_ptr< O > &&o ) noexcept
+    template< typename ...A >
+    observer_handle * connect_( subject< A... > &s, detail::abstract_observer< A... > * const o ) noexcept
     {
-        auto raw_o = o.get();
-        s.add_observer( raw_o );
+        s.add_observer( o );
+        m_observers.insert( std::unique_ptr< observer_handle >( o ) );
 
-        m_observers.insert( std::move( o ) );
-
-        return raw_o;
+        return o;
     }
 
 public:
@@ -220,11 +218,11 @@ public:
     }
 
     template< typename I, typename R, typename ...As, typename ...Ao >
-    observer_handle * connect( subject< As... > &s, I * instance, R ( I::*function )( Ao... ) ) noexcept
+    observer_handle * connect( subject< As... > &s, I * instance, R ( I::* const function )( Ao... ) ) noexcept
     {
         class observer final : public detail::abstract_observer< As ... >
         {
-            I *           m_instance;
+            I * const     m_instance;
             R( I::* const m_function )( Ao... );
 
             void invoke( Ao... args, ... )
@@ -233,7 +231,7 @@ public:
             }
 
         public:
-            observer( observer_owner &owner, subject< As... > &s, I * const instance, R ( I::*f )( Ao... ) ) noexcept
+            observer( observer_owner &owner, subject< As... > &s, I * const instance, R ( I::* const f )( Ao... ) ) noexcept
                     : detail::abstract_observer< As... >( owner, s )
                     , m_instance( instance )
                     , m_function( f )
@@ -245,18 +243,18 @@ public:
             }
         };
 
-        return connect( s, std::make_unique< observer >( *this, s, instance, function ) );
+        return connect_( s, new observer( *this, s, instance, function ) );
     }
 
     template< typename F, typename ...As >
-    observer_handle * connect( subject< As... > &s, F function ) noexcept
+    observer_handle * connect( subject< As... > &s, const F function ) noexcept
     {
         class observer final : public detail::abstract_observer< As... >
         {
-            F m_function;
+            const F m_function;
 
         public:
-            observer( observer_owner &owner, subject< As... > &s, F f ) noexcept
+            observer( observer_owner &owner, subject< As... > &s, const F f ) noexcept
                     : detail::abstract_observer< As... >( owner, s )
                     , m_function( f )
             {}
@@ -267,7 +265,7 @@ public:
             }
         };
 
-        return connect( s, std::make_unique< observer >( *this, s, function ) );
+        return connect_( s, new observer( *this, s, function ) );
     }
 
     template< typename ...As1, typename ...As2 >
@@ -276,7 +274,7 @@ public:
         return connect( s1, [&]( As2 &&... args ){ s2.notify( std::forward< As2 >( args )... ); } );
     }
 
-    void disconnect( observer_handle *o ) noexcept
+    void disconnect( observer_handle * const o ) noexcept
     {
         o->remove_from_subject();
         remove_observer( o );
