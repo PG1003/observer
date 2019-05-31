@@ -25,8 +25,6 @@
 #include <set>
 #include <vector>
 #include <algorithm>
-#include <memory>
-#include <utility>
 
 
 namespace pg
@@ -91,14 +89,14 @@ class observer_handle
     friend class subject;
     friend class observer_owner;
 
-    observer_owner& m_owner;
+    observer_owner &m_owner;
 
     virtual void remove_from_subject() noexcept = 0;
 
     void remove_from_owner() noexcept;
 
 public:
-    explicit observer_handle( observer_owner& owner ) noexcept
+    explicit observer_handle( observer_owner &owner ) noexcept
             : m_owner( owner )
     {}
 
@@ -154,7 +152,7 @@ class subject
         }
     }
 
-    void add_observer( detail::abstract_observer< A... > * const o ) noexcept
+    void add_observer( observer_type * const o ) noexcept
     {
         m_observers.push_back( o );
     }
@@ -162,7 +160,7 @@ class subject
 public:
     ~subject() noexcept
     {
-        for( auto& o : m_observers )
+        for( auto o : m_observers )
         {
             o->remove_from_owner();
         }
@@ -170,7 +168,7 @@ public:
 
     void notify( A... args ) const
     {
-        for( auto& o : m_observers )
+        for( auto o : m_observers )
         {
             o->notify( args... );
         }
@@ -181,17 +179,7 @@ class observer_owner
 {
     friend class observer_handle;
 
-    struct observer_handle_ptr_comp
-    {
-        using is_transparent = std::true_type;
-        using handle_uptr    = std::unique_ptr< observer_handle >;
-
-        bool operator()( const handle_uptr& lhs, const handle_uptr& rhs ) const noexcept { return lhs < rhs; }
-        bool operator()( const handle_uptr& lhs, const observer_handle * const rhs ) const noexcept { return lhs.get() < rhs; }
-        bool operator()( const observer_handle * const lhs, const handle_uptr& rhs ) const noexcept { return lhs < rhs.get(); }
-    };
-
-    std::set< std::unique_ptr< observer_handle >, observer_handle_ptr_comp > m_observers;
+    std::set< observer_handle * > m_observers;
 
     void remove_observer( observer_handle * const o ) noexcept
     {
@@ -203,7 +191,7 @@ class observer_owner
     observer_handle * connect_( subject< A... > &s, detail::abstract_observer< A... > * const o ) noexcept
     {
         s.add_observer( o );
-        m_observers.insert( std::unique_ptr< observer_handle >( o ) );
+        m_observers.insert( o );
 
         return o;
     }
@@ -211,9 +199,10 @@ class observer_owner
 public:
     ~observer_owner() noexcept
     {
-        for( auto& o : m_observers )
+        for( auto o : m_observers )
         {
             o->remove_from_subject();
+            delete o;
         }
     }
 
