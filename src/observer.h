@@ -184,7 +184,11 @@ class observer_owner
     void remove_observer( observer_handle * const o ) noexcept
     {
         auto it_find = m_observers.find( o );
-        m_observers.erase( it_find );
+        if( it_find != m_observers.cend() )
+        {
+            m_observers.erase( it_find );
+            delete o;
+        }
     }
 
     template< typename ...A >
