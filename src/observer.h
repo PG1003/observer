@@ -130,6 +130,10 @@ public:
 template< typename ...A >
 class subject
 {
+    subject( const subject< A... > & ) = delete;
+    subject & operator=( const subject< A... > & ) = delete;
+    subject( subject< A... > && ) = delete;
+
     using observer_type = detail::abstract_observer< A... >;
 
     friend class detail::abstract_observer< A... >;
@@ -158,6 +162,8 @@ class subject
     }
 
 public:
+    subject() = default;
+
     ~subject() noexcept
     {
         for( auto o : m_observers )
@@ -177,18 +183,18 @@ public:
 
 class observer_owner
 {
+    observer_owner( const observer_owner & ) = delete;
+    observer_owner & operator=( const observer_owner & ) = delete;
+    observer_owner( observer_owner && ) = delete;
+
     friend class observer_handle;
 
     std::set< observer_handle * > m_observers;
 
     void remove_observer( observer_handle * const o ) noexcept
     {
-        auto it_find = m_observers.find( o );
-        if( it_find != m_observers.cend() )
-        {
-            m_observers.erase( it_find );
-            delete o;
-        }
+        m_observers.erase( o );
+        delete o;
     }
 
     template< typename ...A >
@@ -201,6 +207,8 @@ class observer_owner
     }
 
 public:
+    observer_owner() = default;
+
     ~observer_owner() noexcept
     {
         for( auto o : m_observers )
@@ -284,10 +292,15 @@ void observer_handle::remove_from_owner() noexcept
 template< typename S >
 class subject_blocker
 {
+    subject_blocker( const subject_blocker< S > & ) = delete;
+    subject_blocker & operator=( const subject_blocker< S > & ) = delete;
+
     S                                          &m_subject;
     std::vector< typename S::observer_type * > m_observers;
 
 public:
+    subject_blocker( subject_blocker< S > && ) = default;
+
     subject_blocker( S &subject ) noexcept
             : m_subject( subject )
     {
