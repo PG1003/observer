@@ -3,17 +3,17 @@
 #include <string>
 #include <functional>
 
-static int total_checks  = 0;
-static int failed_checks = 0;
+static int total_asserts  = 0;
+static int failed_asserts = 0;
 
-static bool report_failed_check( const char* const file, const int line, const char* const condition )
+static bool report_failed_assert( const char* const file, const int line, const char* const condition )
 {
-    std::cout << "check failed! (file " << file << ", line " << line << "): " << condition << std::endl;
-    ++failed_checks;
+    std::cout << "assert failed! (file " << file << ", line " << line << "): " << condition << std::endl;
+    ++failed_asserts;
     return false;
 }
 
-#define check( c ) do { ++total_checks; ( c ) || report_failed_check( __FILE__, __LINE__, #c ); } while( false );
+#define assert_true( c ) do { ++total_asserts; ( c ) || report_failed_assert( __FILE__, __LINE__, #c ); } while( false );
 
 
 using namespace pg;
@@ -97,11 +97,11 @@ static void free_function_observer()
     owner.connect( subject_void, free_function_void );
 
     subject_int.notify( 42 );
-    check( free_function_int_val == 42 );
-    check( free_function_void_val == 1 );
+    assert_true( free_function_int_val == 42 );
+    assert_true( free_function_void_val == 1 );
 
     subject_void.notify();
-    check( free_function_void_val == 2 );
+    assert_true( free_function_void_val == 2 );
 }
 
 static void lambda_function_observer()
@@ -118,11 +118,11 @@ static void lambda_function_observer()
     owner.connect( subject_void, [ & ]{ ++lambda_void_val; } );
 
     subject_int.notify( 42 );
-    check( lambda_int_val == 42 );
-    check( lambda_void_val == 1 );
+    assert_true( lambda_int_val == 42 );
+    assert_true( lambda_void_val == 1 );
 
     subject_void.notify();
-    check( lambda_void_val == 2 );
+    assert_true( lambda_void_val == 2 );
 }
 
 static void std_function_observer()
@@ -142,11 +142,11 @@ static void std_function_observer()
     owner.connect( subject_void, std_function_void );
 
     subject_int.notify( 1337 );
-    check( lambda_int_val == 1337 );
-    check( lambda_void_val == 1 );
+    assert_true( lambda_int_val == 1337 );
+    assert_true( lambda_void_val == 1 );
 
     subject_void.notify();
-    check( lambda_void_val == 2 );
+    assert_true( lambda_void_val == 2 );
 }
 
 static void functor_observer()
@@ -189,8 +189,8 @@ static void functor_observer()
     owner.connect( subject_int, callable_void( void_val ) );
 
     subject_int.notify( 1003 );
-    check( int_val == 1003 );
-    check( void_val == 1 );
+    assert_true( int_val == 1003 );
+    assert_true( void_val == 1 );
 }
 
 static void member_function_observer()
@@ -199,10 +199,10 @@ static void member_function_observer()
     member_observers_with_owner member_observers_with_owner_( subject_int_char );
 
     subject_int_char.notify( 1337, 'Q' );
-    check( member_observers_with_owner_.int_char_ival == 1337 );
-    check( member_observers_with_owner_.int_char_cval == 'Q' );
-    check( member_observers_with_owner_.int_ival == 1337 );
-    check( member_observers_with_owner_.void_val == 1 );
+    assert_true( member_observers_with_owner_.int_char_ival == 1337 );
+    assert_true( member_observers_with_owner_.int_char_cval == 'Q' );
+    assert_true( member_observers_with_owner_.int_ival == 1337 );
+    assert_true( member_observers_with_owner_.void_val == 1 );
 }
 
 static void subject_subject_observer()
@@ -229,12 +229,12 @@ static void subject_subject_observer()
     owner.connect( subject_void, [ & ]{ ++void_val; } );
 
     subject_int_char1.notify( 33, 'R' );
-    check( int_char_1_ival == 33 );
-    check( int_char_1_cval == 'R' );
-    check( int_char_2_ival == 33 );
-    check( int_char_2_cval == 'R' );
-    check( int_val == 33 );
-    check( void_val == 1 );
+    assert_true( int_char_1_ival == 33 );
+    assert_true( int_char_1_cval == 'R' );
+    assert_true( int_char_2_ival == 33 );
+    assert_true( int_char_2_cval == 'R' );
+    assert_true( int_val == 33 );
+    assert_true( void_val == 1 );
 }
 
 static void observer_owner_lifetime()
@@ -249,11 +249,11 @@ static void observer_owner_lifetime()
         owner.connect( subject_int_char, [ & ]( int i ){ val = i; } );
 
         subject_int_char.notify( 1701, 'J' );
-        check( val == 1701 );
+        assert_true( val == 1701 );
     }
 
     subject_int_char.notify( 1702, 'K' );
-    check( val == 1701 );
+    assert_true( val == 1701 );
 }
 
 static void subject_lifetime()
@@ -274,8 +274,8 @@ static void subject_lifetime()
     owner.connect( subject_void, [ & ]{ ++val_2; } );
 
     subject_void.notify();
-    check( val_1 == 1 );
-    check( val_2 == 1 );
+    assert_true( val_1 == 1 );
+    assert_true( val_2 == 1 );
 }
 
 static void observer_disconnect()
@@ -288,12 +288,12 @@ static void observer_disconnect()
     const auto handle = owner.connect( subject_void, [ & ]{ ++val; } );
 
     subject_void.notify();
-    check( val == 1 );
+    assert_true( val == 1 );
 
     owner.disconnect( handle );
 
     subject_void.notify();
-    check( val == 1 );
+    assert_true( val == 1 );
 }
 
 static void block_subject()
@@ -306,17 +306,17 @@ static void block_subject()
     owner.connect( subject_void, [ & ]{ ++val; } );
 
     subject_void.notify();
-    check( val == 1 );
+    assert_true( val == 1 );
 
     {
         subject_blocker< subject<> > blocker( subject_void );
 
         subject_void.notify();
-        check( val == 1 );
+        assert_true( val == 1 );
     }
 
     subject_void.notify();
-    check( val == 2 );
+    assert_true( val == 2 );
 }
 
 static void type_compatibility()
@@ -374,8 +374,8 @@ static void type_compatibility()
     subject_string.notify( const_string_value );
     subject_string.notify( sz_char );
     subject_string.notify( const_p_char_value );
-    check( int_str == 5 );
-    check( int_const_string_ref == 5 );
+    assert_true( int_str == 5 );
+    assert_true( int_const_string_ref == 5 );
     int_reset();
 
     subject_const_string.notify( "Foobar" );
@@ -383,8 +383,8 @@ static void type_compatibility()
     subject_const_string.notify( const_string_value );
     subject_const_string.notify( sz_char );
     subject_const_string.notify( const_p_char_value );
-    check( int_str == 5 );
-    check( int_const_string_ref == 5 );
+    assert_true( int_str == 5 );
+    assert_true( int_const_string_ref == 5 );
     int_reset();
 
     subject_const_string_ref.notify( "Foobar" );
@@ -392,23 +392,23 @@ static void type_compatibility()
     subject_const_string_ref.notify( const_string_value );
     subject_const_string_ref.notify( sz_char );
     subject_const_string_ref.notify( const_p_char_value );
-    check( int_str == 5 );
-    check( int_const_string_ref == 5 );
+    assert_true( int_str == 5 );
+    assert_true( int_const_string_ref == 5 );
     int_reset();
 
     subject_p_char.notify( sz_char );
-    check( int_str == 1 );
-    check( int_const_string_ref == 1 );
-    check( int_p_char == 1 );
-    check( int_const_p_char == 1 );
+    assert_true( int_str == 1 );
+    assert_true( int_const_string_ref == 1 );
+    assert_true( int_p_char == 1 );
+    assert_true( int_const_p_char == 1 );
     int_reset();
 
     subject_const_p_char.notify( "Foobar" );
     subject_const_p_char.notify( sz_char );
     subject_const_p_char.notify( const_p_char_value );
-    check( int_str == 3 );
-    check( int_const_string_ref == 3 );
-    check( int_const_p_char == 3 );
+    assert_true( int_str == 3 );
+    assert_true( int_const_string_ref == 3 );
+    assert_true( int_const_p_char == 3 );
 }
 
 int main( int /* argc */, char * /* argv */[] )
@@ -425,7 +425,7 @@ int main( int /* argc */, char * /* argv */[] )
     block_subject();
     type_compatibility();
 
-    std::cout << "Total tests: " << total_checks << ", Tests failed: " << failed_checks << std::endl;
+    std::cout << "Total asserts: " << total_asserts << ", asserts failed: " << failed_asserts << std::endl;
 
-    return failed_checks ? 1 : 0;
+    return failed_asserts ? 1 : 0;
 }
