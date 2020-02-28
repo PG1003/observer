@@ -85,21 +85,11 @@ class subject_blocker;
 
 class observer_handle
 {
-    template< typename ...A >
-    friend class subject;
     friend class observer_owner;
-
-    observer_owner &m_owner;
 
     virtual void remove_from_subject() noexcept = 0;
 
-    void remove_from_owner() noexcept;
-
 public:
-    explicit observer_handle( observer_owner &owner ) noexcept
-            : m_owner( owner )
-    {}
-
     virtual ~observer_handle() noexcept = default;
 };
 
@@ -109,7 +99,12 @@ namespace detail
 template< typename ...A >
 class abstract_observer : public observer_handle
 {
+    friend class subject< A... >;
+
+    observer_owner  &m_owner;
     subject< A... > &m_subject;
+
+    void remove_from_owner() noexcept;
 
     virtual void remove_from_subject() noexcept final
     {
@@ -118,7 +113,7 @@ class abstract_observer : public observer_handle
 
 public:
     explicit abstract_observer( observer_owner& owner, subject< A... > &s ) noexcept
-            : observer_handle( owner )
+            : m_owner( owner)
             , m_subject( s )
     {}
 
@@ -187,7 +182,8 @@ class observer_owner
     observer_owner & operator=( const observer_owner & ) = delete;
     observer_owner( observer_owner && ) = delete;
 
-    friend class observer_handle;
+    template< typename ...A >
+    friend class detail::abstract_observer;
 
     std::set< observer_handle * > m_observers;
 
@@ -283,7 +279,8 @@ public:
 };
 
 
-void observer_handle::remove_from_owner() noexcept
+template< typename ...A >
+void detail::abstract_observer< A... >::remove_from_owner() noexcept
 {
     m_owner.remove_observer( this );
 }
