@@ -25,6 +25,7 @@
 #include <set>
 #include <vector>
 #include <algorithm>
+#include <functional>
 
 
 namespace pg
@@ -67,12 +68,12 @@ struct invoke_helper< R ( C:: * )( A... ) const >
     }
 };
 
+}
+
 template< typename F, typename ...A >
 inline void invoke( const F function, A... args )
 {
-    invoke_helper< F >::invoke( function, std::forward< A >( args )... );
-}
-
+    detail::invoke_helper< F >::invoke( function, std::forward< A >( args )... );
 }
 
 template< typename ...A >
@@ -247,7 +248,7 @@ public:
 
             virtual void notify( As... args ) override final
             {
-                detail::invoke( m_function, std::forward< As >( args )... );
+                pg::invoke( m_function, std::forward< As >( args )... );
             }
 
             virtual void disconnect( subject< As... > * ) noexcept override
