@@ -25,7 +25,6 @@
 #include <set>
 #include <vector>
 #include <algorithm>
-#include <functional>
 
 
 namespace pg
