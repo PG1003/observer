@@ -285,7 +285,7 @@ static void observer_disconnect()
 
     int val = 0;
 
-    const auto handle = owner.connect( subject_void, [ & ]{ ++val; } );
+    pg::observer_handle * const handle = owner.connect( subject_void, [ & ]{ ++val; } );
 
     subject_void.notify();
     assert_true( val == 1 );

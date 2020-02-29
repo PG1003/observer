@@ -75,86 +75,34 @@ inline void invoke( const F function, A... args )
 
 }
 
-class observer_owner;
-
 template< typename ...A >
 class subject;
 
 template< typename S >
 class subject_blocker;
 
-class observer_handle
-{
-    friend class observer_owner;
-
-    virtual void remove_from_subject() noexcept = 0;
-
-public:
-    virtual ~observer_handle() noexcept = default;
-};
-
-namespace detail
-{
-
 template< typename ...A >
-class abstract_observer : public observer_handle
+class observer
 {
-    friend class subject< A... >;
-
-    observer_owner  &m_owner;
-    subject< A... > &m_subject;
-
-    void remove_from_owner() noexcept;
-
-    virtual void remove_from_subject() noexcept final
-    {
-        m_subject.remove_observer( this );
-    }
-
 public:
-    explicit abstract_observer( observer_owner& owner, subject< A... > &s ) noexcept
-            : m_owner( owner)
-            , m_subject( s )
-    {}
+    virtual ~observer() noexcept = default;
 
+    virtual void disconnect( subject< A... > * ) noexcept = 0;
     virtual void notify( A... args ) = 0;
 };
-
-}
 
 template< typename ...A >
 class subject
 {
+    using observer_type = observer< A... >;
+
     subject( const subject< A... > & ) = delete;
     subject & operator=( const subject< A... > & ) = delete;
     subject( subject< A... > && ) = delete;
 
-    using observer_type = detail::abstract_observer< A... >;
-
-    friend class detail::abstract_observer< A... >;
     friend class subject_blocker< subject< A... > >;
-    friend class observer_owner;
 
     std::vector< observer_type * > m_observers;
-
-    void remove_observer( observer_handle * const o ) noexcept
-    {
-        // Iterate reversed over the m_observers since we expect that observers that
-        // are frequently connected and disconnected resides at the end of the vector.
-        auto it_find = std::find_if( m_observers.crbegin(), m_observers.crend(), [o]( const auto &o1 )
-        {
-            return static_cast< observer_handle * >( o1 ) == o;
-        } );
-        if( it_find != m_observers.crend() )
-        {
-            m_observers.erase( ( ++it_find ).base() );
-        }
-    }
-
-    void add_observer( observer_type * const o ) noexcept
-    {
-        m_observers.push_back( o );
-    }
 
 public:
     subject() = default;
@@ -163,7 +111,26 @@ public:
     {
         for( auto o : m_observers )
         {
-            o->remove_from_owner();
+            o->disconnect( this );
+        }
+    }
+
+    void connect( observer_type * const o ) noexcept
+    {
+        m_observers.push_back( o );
+    }
+
+    void disconnect( const observer_type * const o ) noexcept
+    {
+        // Iterate reversed over the m_observers since we expect that observers that
+        // are frequently connected and disconnected resides at the end of the vector.
+        auto it_find = std::find_if( m_observers.crbegin(), m_observers.crend(), [o]( const auto &other )
+        {
+            return other == o;
+        } );
+        if( it_find != m_observers.crend() )
+        {
+            m_observers.erase( ( ++it_find ).base() );
         }
     }
 
@@ -178,28 +145,38 @@ public:
 
 class observer_owner
 {
+    class abstract_owner_handle;
+
+public:
+    class connection
+    {
+        // Do not let others inherit from this class
+        friend class abstract_owner_handle;
+
+    private:
+        explicit connection() = default;
+    };
+
+private:
     observer_owner( const observer_owner & ) = delete;
     observer_owner & operator=( const observer_owner & ) = delete;
     observer_owner( observer_owner && ) = delete;
 
-    template< typename ...A >
-    friend class detail::abstract_observer;
-
-    std::set< observer_handle * > m_observers;
-
-    void remove_observer( observer_handle * const o ) noexcept
+    class abstract_owner_handle : public connection
     {
-        m_observers.erase( o );
-        delete o;
-    }
+    public:
+        virtual ~abstract_owner_handle() = default;
+        virtual void remove_from_subject() noexcept = 0;
+    };
 
-    template< typename ...A >
-    observer_handle * connect_( subject< A... > &s, detail::abstract_observer< A... > * const o ) noexcept
+    std::set< abstract_owner_handle * > m_observers;
+
+    void remove_observer( abstract_owner_handle * const o ) noexcept
     {
-        s.add_observer( o );
-        m_observers.insert( o );
-
-        return o;
+        if( m_observers.erase( o ) )
+        {
+            delete o;
+        }
     }
 
 public:
@@ -215,76 +192,104 @@ public:
     }
 
     template< typename I, typename R, typename ...As, typename ...Ao >
-    observer_handle * connect( subject< As... > &s, I * instance, R ( I::* const function )( Ao... ) ) noexcept
+    connection * connect( subject< As... > &s, I * instance, R ( I::* const function )( Ao... ) ) noexcept
     {
-        class observer final : public detail::abstract_observer< As ... >
+        class owner_observer final : public observer< As ... >, public abstract_owner_handle
         {
-            I * const     m_instance;
-            R( I::* const m_function )( Ao... );
+            observer_owner   &m_owner;
+            subject< As... > &m_subject;
+            I * const        m_instance;
+            R( I::* const    m_function )( Ao... );
 
             void invoke( Ao... args, ... )
             {
                 ( m_instance->*m_function )( std::forward< Ao >( args )... );
             }
 
-        public:
-            observer( observer_owner &owner, subject< As... > &s, I * const instance, R ( I::* const f )( Ao... ) ) noexcept
-                    : detail::abstract_observer< As... >( owner, s )
-                    , m_instance( instance )
-                    , m_function( f )
-            {}
-
-            virtual void notify( As... args ) override
+            virtual void notify( As... args ) override final
             {
                 invoke( std::forward< As >( args )... );
             }
-        };
 
-        return connect_( s, new observer( *this, s, instance, function ) );
-    }
+            virtual void disconnect( subject< As... > * ) noexcept override
+            {
+                m_owner.remove_observer( this );
+            }
 
-    template< typename F, typename ...As >
-    observer_handle * connect( subject< As... > &s, const F function ) noexcept
-    {
-        class observer final : public detail::abstract_observer< As... >
-        {
-            const F m_function;
+            virtual void remove_from_subject() noexcept override
+            {
+                m_subject.disconnect( this );
+            }
 
         public:
-            observer( observer_owner &owner, subject< As... > &s, const F f ) noexcept
-                    : detail::abstract_observer< As... >( owner, s )
+            owner_observer( observer_owner &owner, subject< As... > &s, I * const instance, R ( I::* const f )( Ao... ) ) noexcept
+                    : m_owner( owner )
+                    , m_subject( s )
+                    , m_instance( instance )
                     , m_function( f )
-            {}
-
-            virtual void notify( As... args ) override
             {
-                detail::invoke( m_function, std::forward< As >( args )... );
+                m_owner.m_observers.insert( this );
+                m_subject.connect( this );
             }
         };
 
-        return connect_( s, new observer( *this, s, function ) );
+        return new owner_observer( *this, s, instance, function );
+    }
+
+    template< typename F, typename ...As >
+    connection * connect( subject< As... > &s, const F function ) noexcept
+    {
+        class owner_observer final : public observer< As... >, public abstract_owner_handle
+        {
+            observer_owner   &m_owner;
+            subject< As... > &m_subject;
+            const F          m_function;
+
+            virtual void notify( As... args ) override final
+            {
+                detail::invoke( m_function, std::forward< As >( args )... );
+            }
+
+            virtual void disconnect( subject< As... > * ) noexcept override
+            {
+                m_owner.remove_observer( this );
+            }
+
+            virtual void remove_from_subject() noexcept override
+            {
+                m_subject.disconnect( this );
+            }
+
+        public:
+            owner_observer( observer_owner &owner, subject< As... > &s, const F f ) noexcept
+                    : m_owner( owner )
+                    , m_subject( s )
+                    , m_function( f )
+            {
+                m_owner.m_observers.insert( this );
+                m_subject.connect( this );
+            }
+        };
+
+        return new owner_observer( *this, s, function );
     }
 
     template< typename ...As1, typename ...As2 >
-    observer_handle * connect( subject< As1... > &s1, subject< As2... > &s2 ) noexcept
+    connection * connect( subject< As1... > &s1, subject< As2... > &s2 ) noexcept
     {
         return connect( s1, [&]( As2 &&... args ){ s2.notify( std::forward< As2 >( args )... ); } );
     }
 
-    void disconnect( observer_handle * const o ) noexcept
+    void disconnect( connection * const c ) noexcept
     {
+        auto o = static_cast< abstract_owner_handle * >( c );
         o->remove_from_subject();
         remove_observer( o );
     }
 };
 
-
-template< typename ...A >
-void detail::abstract_observer< A... >::remove_from_owner() noexcept
-{
-    m_owner.remove_observer( this );
-}
-
+// The use of observer_handle has been deprecated, use observer_owner::connection instead!
+using observer_handle = typename observer_owner::connection;
 
 template< typename S >
 class subject_blocker
