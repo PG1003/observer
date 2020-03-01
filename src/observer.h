@@ -30,7 +30,7 @@
 namespace pg
 {
 
-namespace detail
+namespace
 {
 
 // https://stackoverflow.com/a/27867127
@@ -81,7 +81,7 @@ struct invoke_helper< R ( C:: * )( A... ) const >
 template< typename F, typename ...A >
 inline void invoke( const F function, A... args )
 {
-    detail::invoke_helper< F >::invoke( function, std::forward< A >( args )... );
+    invoke_helper< F >::invoke( function, std::forward< A >( args )... );
 }
 
 template< typename ...A >
