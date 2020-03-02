@@ -40,6 +40,55 @@ static void free_function_reset()
     free_function_void_val = 0;
 }
 
+static int free_function_return_int()
+{
+    return 42;
+}
+
+struct functor_int
+{
+    int &val;
+
+    functor_int( int &i )
+        : val( i )
+    {}
+
+    void operator()( int i )
+    {
+        val = i;
+    }
+};
+
+struct functor_void
+{
+    int &val;
+
+    functor_void( int &i )
+        : val( i )
+    {}
+
+    void operator()()
+    {
+        ++val;
+    }
+};
+
+struct functor_return_int
+{
+    int operator()( int i )
+    {
+        return i;
+    }
+};
+
+struct const_functor_return_int
+{
+    int operator()( int i ) const
+    {
+        return i;
+    }
+};
+
 struct member_observers
 {
     int int_char_ival = -1;
@@ -151,42 +200,14 @@ static void std_function_observer()
 
 static void functor_observer()
 {
-    struct callable_int
-    {
-        int &val;
-
-        callable_int( int &i )
-            : val( i )
-        {}
-
-        void operator()( int i )
-        {
-            val = i;
-        }
-    };
-
-    struct callable_void
-    {
-        int &val;
-
-        callable_void( int &i )
-            : val( i )
-        {}
-
-        void operator()()
-        {
-            ++val;
-        }
-    };
-
     observer_owner owner;
     subject< int > subject_int;
 
     int int_val  = -1;
     int void_val = 0;
 
-    owner.connect( subject_int, callable_int( int_val ) );
-    owner.connect( subject_int, callable_void( void_val ) );
+    owner.connect( subject_int, functor_int( int_val ) );
+    owner.connect( subject_int, functor_void( void_val ) );
 
     subject_int.notify( 1003 );
     assert_true( int_val == 1003 );
@@ -411,6 +432,49 @@ static void type_compatibility()
     assert_true( int_const_p_char == 3 );
 }
 
+static void invoke_function()
+{
+    // Free functions
+    free_function_reset();
+
+    invoke( free_function_void, "pg", 1003 );
+    assert_true( free_function_void_val == 1 );
+
+    invoke( free_function_int, 42 );
+    assert_true( free_function_int_val == 42 );
+
+    const int int_free_function = invoke( free_function_return_int );
+    assert_true( int_free_function == 42 );
+
+    // Functor
+    int int_functor_0  = -1;
+    invoke( functor_int( int_functor_0 ), 42 );
+    assert_true( int_functor_0 == 42 );
+
+    const int int_functor_1 = invoke( functor_return_int(), 42, "foobar" );
+    assert_true( int_functor_1 == 42 );
+
+    const int int_functor_2 = invoke( functor_return_int(), 42 );
+    assert_true( int_functor_2 == 42 );
+
+    // Functor with const function
+    const int int_const_functor_0 = invoke( const_functor_return_int(), 42, "foobar" );
+    assert_true( int_const_functor_0 == 42 );
+
+    const int int_const_functor_1 = invoke( const_functor_return_int(), 42 );
+    assert_true( int_const_functor_1 == 42 );
+
+    // Lambda
+    const int int_lambda = invoke( []( int i ){ return i * 2; }, 21, 1337 );
+    assert_true( int_lambda == 42 );
+
+    // std::function
+    int int_std_function = -1;
+    const std::function< void( void ) > std_function = [&]{ int_std_function = 42; };
+    pg::invoke( std_function ); // ADL kicked in... explicit use pg::invoke to avoid ambiguity with std::invoke.
+    assert_true( int_std_function == 42 );
+}
+
 int main( int /* argc */, char * /* argv */[] )
 {
     free_function_observer();
@@ -424,6 +488,7 @@ int main( int /* argc */, char * /* argv */[] )
     observer_disconnect();
     block_subject();
     type_compatibility();
+    invoke_function();
 
     std::cout << "Total asserts: " << total_asserts << ", asserts failed: " << failed_asserts << std::endl;
 
