@@ -41,9 +41,9 @@ template< typename R, typename ...A >
 struct invoke_helper< R ( * )( A... ) >
 {
     template< typename F >
-    static void invoke( const F function, A... args, ... )
+    static decltype( auto ) invoke( const F function, A... args, ... )
     {
-        function( std::forward< A >( args )... );
+        return function( std::forward< A >( args )... );
     }
 };
 
@@ -51,9 +51,9 @@ template< typename R, typename C, typename ...A >
 struct invoke_helper< R ( C:: * )( A... ) >
 {
     template< typename F >
-    static void invoke( F function, A... args, ... )
+    static decltype( auto ) invoke( F function, A... args, ... )
     {
-        function( std::forward< A >( args )... );
+        return function( std::forward< A >( args )... );
     }
 };
 
@@ -61,9 +61,9 @@ template< typename R, typename C, typename ...A >
 struct invoke_helper< R ( C:: * )( A... ) const >
 {
     template< typename F >
-    static void invoke( const F function, A... args, ... )
+    static decltype( auto ) invoke( const F function, A... args, ... )
     {
-        function( std::forward< A >( args )... );
+        return function( std::forward< A >( args )... );
     }
 };
 
@@ -75,13 +75,15 @@ struct invoke_helper< R ( C:: * )( A... ) const >
  * \param function A callable such as a free function, lambda, std::function or a functor.
  * \param args     The arguments to forward to \em function.
  *
+ * \return Returns the value that the invoked function returned.
+ *
  * The advantage this implementation over std::invoke is that the number of parameters that is
  * forwarded to \em function is adjusted when \em function accept less parameters than passed to \em invoke.
  */
 template< typename F, typename ...A >
-inline void invoke( const F function, A... args )
+inline decltype( auto ) invoke( const F function, A... args )
 {
-    invoke_helper< F >::invoke( function, std::forward< A >( args )... );
+    return invoke_helper< F >::invoke( function, std::forward< A >( args )... );
 }
 
 template< typename ...A >
