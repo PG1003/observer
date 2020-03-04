@@ -2,6 +2,7 @@
 #include <iostream>
 #include <string>
 #include <functional>
+#include <memory>
 
 static int total_asserts  = 0;
 static int failed_asserts = 0;
@@ -301,20 +302,50 @@ static void subject_lifetime()
 
 static void observer_disconnect()
 {
-    observer_owner owner;
+    observer_owner owner_1;
+    observer_owner owner_2;
     subject<>      subject_void;
 
     int val = 0;
 
-    pg::observer_handle * const handle = owner.connect( subject_void, [ & ]{ ++val; } );
+    observer_owner::connection connection_1;
+    connection_1 = owner_1.connect( subject_void, [ & ]{ ++val; } );
+
+    // connection_1 shouldn't be invalidated since it was not from owner_2 and should not cause issues with owner_2.
+    owner_2.disconnect( connection_1 );
 
     subject_void.notify();
     assert_true( val == 1 );
 
-    owner.disconnect( handle );
+    // Move handle to connection_2 and disconnect with the invalidated connection_1; nothing disconnected from owner.
+    const observer_owner::connection connection_2 = std::move( connection_1 );
+    owner_1.disconnect( connection_1 );
 
     subject_void.notify();
-    assert_true( val == 1 );
+    assert_true( val == 2 );
+
+    // Now we now disconnect for real.
+    owner_1.disconnect( connection_2 );
+
+    subject_void.notify();
+    assert_true( val == 2 );
+
+    // Disconnecting with an invalidated connection handle should not cause issues.
+    owner_1.disconnect( connection_2 );
+
+    // Test shared connection.
+    auto shared_connection_1 = std::make_shared< observer_owner::connection >( owner_1.connect( subject_void, [ & ]{ ++val; } ) );
+    auto shared_connection_2 = shared_connection_1;
+    owner_2.disconnect( *shared_connection_1 );
+
+    subject_void.notify();
+    assert_true( val == 3 );
+
+    owner_1.disconnect( *shared_connection_1 );
+    owner_1.disconnect( *shared_connection_2 );
+
+    subject_void.notify();
+    assert_true( val == 3 );
 }
 
 static void block_subject()

@@ -208,46 +208,32 @@ public:
 };
 
 /**
- * \brief Manages the subject - observer connection lifetime from the observer side.
+ * \brief Manages the subject <--> observer connection lifetime from the observer side.
  *
  * Connections that are made and thus owned by observer_owner are removed at destruction of observer_owner.
- * The observer is automatically disconnected from it's subject when the connection is removed.
  */
 class observer_owner
 {
-    class abstract_owner_handle;
-
 public:
-    /**
-     * \brief A handle to a subject - observer connection.
-     *
-     * \warning You shall not inherit from this class.
-     *
-     * \see observer_owner::connect observer_owner::disconnect
-     */
-    class connection
-    {
-        // Do not let others inherit from this class
-        friend class abstract_owner_handle;
-
-        explicit connection() = default;
-    };
+    class connection;
 
 private:
+    class abstract_owner_observer
+    {
+    public:
+        connection * m_connection = nullptr;
+
+        virtual ~abstract_owner_observer();
+        virtual void remove_from_subject() noexcept = 0;
+    };
+
     observer_owner( const observer_owner & ) = delete;
     observer_owner & operator=( const observer_owner & ) = delete;
     observer_owner( observer_owner && ) = delete;
 
-    class abstract_owner_handle : public connection
-    {
-    public:
-        virtual ~abstract_owner_handle() = default;
-        virtual void remove_from_subject() noexcept = 0;
-    };
+    std::set< abstract_owner_observer * > m_observers;
 
-    std::set< abstract_owner_handle * > m_observers;
-
-    void remove_observer( abstract_owner_handle * const o ) noexcept
+    void remove_observer( abstract_owner_observer * const o ) noexcept
     {
         if( m_observers.erase( o ) )
         {
@@ -256,6 +242,68 @@ private:
     }
 
 public:
+    /**
+     * \brief A handle to a subject <--> observer connection.
+     *
+     * Connection handles are invalidated when they are used to disconnect or when the observer_owner is destroyed.
+     *
+     * There is only one instance of a connection handle created for each connection, they cannot be copied.
+     * However, a std::shared_ptr can be used when a connection handle needs to be shared between multiple objects.
+     *
+     * \code{.cpp}
+     * auto shared_connection = std::make_shared< observer_owner::connection >( my_observer_owner.connect( my_subject, my_function ) );
+     * \endcode
+     *
+     * \see observer_owner::connect observer_owner::disconnect
+     */
+    class connection
+    {
+        mutable abstract_owner_observer * m_observer = nullptr;
+
+        // Only let observer_owner create valid connection handles.
+        friend class observer_owner;
+        connection( abstract_owner_observer * o )
+                : m_observer( o )
+        {
+            m_observer->m_connection = this;
+        }
+
+    public:
+    	connection() = default;
+        connection( const connection & ) = delete;
+        connection & operator=( const connection & ) = delete;
+
+        connection & operator=( connection && c )
+        {
+            if( c.m_observer )
+            {
+                m_observer               = c.m_observer;
+                m_observer->m_connection = this;
+                c.m_observer             = nullptr;
+            }
+
+            return *this;
+        }
+
+        connection( connection && c )
+        {
+            if( c.m_observer )
+            {
+                m_observer               = c.m_observer;
+                m_observer->m_connection = this;
+                c.m_observer             = nullptr;
+            }
+        }
+
+        ~connection()
+        {
+            if( m_observer )
+            {
+                m_observer->m_connection = nullptr;
+            }
+        }
+    };
+
     observer_owner() = default;
 
     ~observer_owner() noexcept
@@ -281,9 +329,9 @@ public:
      * \note The lifetime of the instance must exceed the observer_owner's lifetime.
      */
     template< typename I, typename R, typename ...As, typename ...Ao >
-    connection * connect( subject< As... > &s, I * instance, R ( I::* const function )( Ao... ) ) noexcept
+    connection connect( subject< As... > &s, I * instance, R ( I::* const function )( Ao... ) ) noexcept
     {
-        class owner_observer final : public observer< As ... >, public abstract_owner_handle
+        class owner_observer final : public observer< As ... >, public abstract_owner_observer
         {
             observer_owner   &m_owner;
             subject< As... > &m_subject;
@@ -341,9 +389,9 @@ public:
      * \note When a callable has side effects than the lifetime of these side effects must exceed the observer_owner's lifetime.
      */
     template< typename F, typename ...As >
-    connection * connect( subject< As... > &s, const F function ) noexcept
+    connection connect( subject< As... > &s, const F function ) noexcept
     {
-        class owner_observer final : public observer< As... >, public abstract_owner_handle
+        class owner_observer final : public observer< As... >, public abstract_owner_observer
         {
             observer_owner   &m_owner;
             subject< As... > &m_subject;
@@ -392,7 +440,7 @@ public:
      * \note The lifetime of the notified subject and it's side effects must exceed the observer_owner's lifetime.
      */
     template< typename ...As1, typename ...As2 >
-    connection * connect( subject< As1... > &s1, subject< As2... > &s2 ) noexcept
+    connection connect( subject< As1... > &s1, subject< As2... > &s2 ) noexcept
     {
         return connect( s1, [&]( As2 &&... args ){ s2.notify( std::forward< As2 >( args )... ); } );
     }
@@ -406,23 +454,30 @@ public:
      *
      * \see observer_owner::connect
      */
-    void disconnect( connection * const c ) noexcept
+    void disconnect( const connection &c ) noexcept
     {
-        auto o = static_cast< abstract_owner_handle * >( c );
-        o->remove_from_subject();
-        remove_observer( o );
+        if( c.m_observer )
+        {
+        	// Disconnect only when its our connection.
+            auto it = m_observers.find( c.m_observer );
+            if( it != m_observers.cend() )
+            {
+                c.m_observer->remove_from_subject();
+                m_observers.erase( it );
+                c.m_observer = nullptr; // Invalidate connection handle
+            }
+        }
     }
 };
 
-/**
- * \brief This is an alias for backwards compatibility.
- *
- * Previously an observer_handle was return by the observer_owner::connect functions but is replaced
- * by a more robust observer_owner::connection handle type.
- *
- * \warning The use of observer_handle has been deprecated, use observer_owner::connection instead!
- */
-using observer_handle = typename observer_owner::connection;
+observer_owner::abstract_owner_observer::~abstract_owner_observer()
+{
+    if( m_connection )
+    {
+        // Invalidate connection handle
+        m_connection->m_observer = nullptr;
+    }
+}
 
 /**
  * \brief Blocks temporary the notifications of a subject.
