@@ -1,0 +1,9 @@
+# WIP 
+
+- Made pg::invoke part of the public API.
+- Added doxygen documentation for the public API.
+- Changed the observer interface to allow custom observer types.
+
+# v1.0.0
+
+- Initial release
