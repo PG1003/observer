@@ -463,35 +463,6 @@ static void type_compatibility()
     assert_true( int_const_p_char == 3 );
 }
 
-static void move_owner()
-{
-    observer_owner owner_1;
-    subject<>      subject_void;
-
-    int i = 0;
-    auto connection = owner_1.connect( subject_void, [ & ]{ ++i; } );
-
-    subject_void.notify();
-    assert_true( i == 1 );
-
-    observer_owner owner_2;
-    owner_2 = std::move( owner_1 );
-
-    observer_owner owner_3 = std::move( owner_2 );
-
-    subject_void.notify();
-    assert_true( i == 2 );
-
-    owner_1.disconnect( connection );
-    owner_2.disconnect( connection );
-    subject_void.notify();
-    assert_true( i == 3 );
-
-    owner_3.disconnect( connection );
-    subject_void.notify();
-    assert_true( i == 3 )
-}
-
 static void invoke_function()
 {
     // Free functions
@@ -548,7 +519,6 @@ int main( int /* argc */, char * /* argv */[] )
     observer_disconnect();
     block_subject();
     type_compatibility();
-    move_owner();
     invoke_function();
 
     std::cout << "Total asserts: " << total_asserts << ", asserts failed: " << failed_asserts << std::endl;

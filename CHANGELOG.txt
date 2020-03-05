@@ -1,6 +1,5 @@
 # WIP 
 
-- Made observer_owner movable.
 - Refactored the connection handle. The connection handle is now invalidated when the observer disconnects. This is a breaking change.
 - Made pg::invoke part of the public API.
 - Added doxygen documentation for the public API.
