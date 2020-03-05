@@ -229,7 +229,6 @@ private:
 
     observer_owner( const observer_owner & ) = delete;
     observer_owner & operator=( const observer_owner & ) = delete;
-    observer_owner( observer_owner && ) = delete;
 
     std::set< abstract_owner_observer * > m_observers;
 
@@ -305,6 +304,8 @@ public:
     };
 
     observer_owner() = default;
+    observer_owner( observer_owner && ) = default;
+    observer_owner & operator=( observer_owner && ) = default;
 
     ~observer_owner() noexcept
     {
