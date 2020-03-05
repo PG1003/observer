@@ -464,7 +464,7 @@ public:
             {
                 c.m_observer->remove_from_subject();
                 m_observers.erase( it );
-                c.m_observer = nullptr; // Invalidate connection handle
+                delete c.m_observer;
             }
         }
     }
