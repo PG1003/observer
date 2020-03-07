@@ -143,7 +143,7 @@ class subject
     std::vector< observer_type * > m_observers;
 
 public:
-    subject() = default;
+    subject() noexcept = default;
 
     ~subject() noexcept
     {
@@ -262,7 +262,7 @@ public:
 
         // Only let observer_owner create valid connection handles.
         friend class observer_owner;
-        connection( abstract_owner_observer * o )
+        connection( abstract_owner_observer * o ) noexcept
                 : m_observer( o )
         {
             m_observer->m_connection = this;
@@ -273,7 +273,7 @@ public:
         connection( const connection & ) = delete;
         connection & operator=( const connection & ) = delete;
 
-        connection & operator=( connection && c )
+        connection & operator=( connection && c ) noexcept
         {
             if( c.m_observer )
             {
@@ -285,7 +285,7 @@ public:
             return *this;
         }
 
-        connection( connection && c )
+        connection( connection && c ) noexcept
         {
             if( c.m_observer )
             {
@@ -295,7 +295,7 @@ public:
             }
         }
 
-        ~connection()
+        ~connection() noexcept
         {
             if( m_observer )
             {
@@ -304,7 +304,7 @@ public:
         }
     };
 
-    observer_owner() = default;
+    observer_owner() noexcept = default;
 
     ~observer_owner() noexcept
     {
@@ -343,7 +343,7 @@ public:
                 ( m_instance->*m_function )( std::forward< Ao >( args )... );
             }
 
-            virtual void notify( As... args ) override final
+            virtual void notify( As... args ) override
             {
                 invoke( std::forward< As >( args )... );
             }
@@ -397,7 +397,7 @@ public:
             subject< As... > &m_subject;
             const F          m_function;
 
-            virtual void notify( As... args ) override final
+            virtual void notify( As... args ) override
             {
                 pg::invoke( m_function, std::forward< As >( args )... );
             }
