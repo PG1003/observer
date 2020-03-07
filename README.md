@@ -1,7 +1,6 @@
 # observer
 
-A flexible observer mechanism as a header-only library with features that are inspired by Qt's signals and slots.
-This includes connecting observer functions that accept _less_ parameters than the subject provides.
+An observer pattern that can ignore extra arguments like Qt's signals and slots.
 
 ## Features
 
@@ -16,8 +15,6 @@ This includes connecting observer functions that accept _less_ parameters than t
 ## Requirements
 
 * C++14 compliant compiller.
-
-There is an experimental C++11 branch for platforms that do not support the required C++14 features.
 
 ## Examples
 
@@ -63,24 +60,14 @@ When ```hello_subject``` does a ```notify``` then all observer functions that ar
 
 ### Example 2
 
-This example shows some more advanced features of the library:
-* Objects can inherit from ```pg::observer_owner```.
-* Connecting member functions to a subject.
-* Connecting lambdas to a subject.
-* Connecting observer functions that accepts _less_ arguments than the subject's notify passes on.
+This example shows three more features of the library:
+* Connecting a lambda to a subject that accepts _less_ arguments than the subject's notify passes on.
+* Connecting a member function to a subject.
+* Disconnecting a function.
 
 ``` c++
-struct bar : public pg::observer_owner
+struct b : public pg::observer_owner
 {
-    bar( pg::subject< std::string, int >& foo )
-    {
-        connect( foo, this, &bar::print );
-        connect( foo, []( const std::string &str )
-        {
-            std::cout << "Hello " << str << "!" << std::endl;
-        } );
-    }
-
     void print( const std::string &str, int i )
     {
         std::cout << str << i << std::endl;
@@ -89,8 +76,20 @@ struct bar : public pg::observer_owner
 
 int main( int /* argc */, char * /* argv */[] )
 {
+    pg::observer_owner              owner;
     pg::subject< std::string, int > foo;
-    bar                             b( foo );
+    b                               bar;
+
+    owner.connect( foo, []( const std::string &str )
+    {
+        std::cout << "Hello " << str << '!' << std::endl;
+    } );
+
+    auto connection = owner.connect( foo, &bar, &b::print );
+
+    foo.notify( "PG", 1003 );
+
+    owner.disconnect( connection );
 
     foo.notify( "PG", 1003 );
 
@@ -98,7 +97,8 @@ int main( int /* argc */, char * /* argv */[] )
 }
 ```
 The output is:
-> PG1003    
+> Hello PG!  
+> PG1003  
 > Hello PG!
 
 ## C++17 CTAD
