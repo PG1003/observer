@@ -123,7 +123,7 @@ public:
 };
 
 /**
- * \brief Class that calls the notification function of it's observers.
+ * \brief Class that calls the notification function of its observers.
  *
  * \tparam A The types of the values that are passed to the observers notification functions.
  *
@@ -430,14 +430,14 @@ public:
      * \brief Connects a subject to another subject.
      *
      * \param s1 The subject from which the other subject will be notified.
-     * \param s2 The subject that notifies it's observers when the subject to which it is connected notifies
+     * \param s2 The subject that notifies its observers when the subject to which it is connected notifies
      *
      * \return Returns an observer_owner::connection handle.
      *
-     * The number of paramemters that \em s2 accepts in it's notify function can be less than number of values
+     * The number of paramemters that \em s2 accepts in its notify function can be less than number of values
      * that comes with the notificatoin from \em s1.
      *
-     * \note The lifetime of the notified subject and it's side effects must exceed the observer_owner's lifetime.
+     * \note The lifetime of the notified subject and its side effects must exceed the observer_owner's lifetime.
      */
     template< typename ...As1, typename ...As2 >
     connection connect( subject< As1... > &s1, subject< As2... > &s2 ) noexcept
@@ -446,7 +446,7 @@ public:
     }
 
     /**
-     * \brief Disconnects the observer from it's subject.
+     * \brief Disconnects the observer from its subject.
      *
      * \param c The connection handle.
      *
@@ -485,7 +485,7 @@ observer_owner::abstract_owner_observer::~abstract_owner_observer()
  * \tparam S The type of the blocked subject.
  *
  * This class use RAII. The class blocks notifications when it is constructed and unblocked at destruction,
- * for example when a subject_blocker instance leaves it's scope.
+ * for example when a subject_blocker instance leaves its scope.
  */
 template< typename S >
 class subject_blocker
