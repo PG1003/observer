@@ -229,7 +229,6 @@ private:
 
     observer_owner( const observer_owner & ) = delete;
     observer_owner & operator=( const observer_owner & ) = delete;
-    observer_owner( observer_owner && ) = delete;
 
     std::set< abstract_owner_observer * > m_observers;
 
@@ -270,8 +269,6 @@ public:
 
     public:
     	connection() = default;
-        connection( const connection & ) = delete;
-        connection & operator=( const connection & ) = delete;
 
         connection & operator=( connection && c ) noexcept
         {
