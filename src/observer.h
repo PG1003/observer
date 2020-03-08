@@ -223,7 +223,7 @@ private:
     public:
         connection * m_connection = nullptr;
 
-        virtual ~abstract_owner_observer();
+        virtual ~abstract_owner_observer() noexcept;
         virtual void remove_from_subject() noexcept = 0;
     };
 
@@ -268,7 +268,7 @@ public:
         }
 
     public:
-    	connection() = default;
+    	connection() noexcept = default;
 
         connection & operator=( connection && c ) noexcept
         {
