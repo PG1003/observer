@@ -112,7 +112,7 @@ public:
      *
      * The subject calls disconnect on all its observers when the subject gets deleted or goes out of scope.
      */
-    virtual void disconnect( subject< A... > * s ) noexcept = 0;
+    virtual void disconnect( const subject< A... > * s ) noexcept = 0;
 
     /**
      *  \brief The notification function that is called when the subject notifies
@@ -136,7 +136,6 @@ class subject
 
     subject( const subject< A... > & ) = delete;
     subject & operator=( const subject< A... > & ) = delete;
-    subject( subject< A... > && ) = delete;
 
     friend class subject_blocker< subject< A... > >;
 
@@ -147,9 +146,9 @@ public:
 
     ~subject() noexcept
     {
-        for( auto o : m_observers )
+        for( auto it = m_observers.rbegin() ; it != m_observers.crend() ; ++it )
         {
-            o->disconnect( this );
+            ( *it )->disconnect( this );
         }
     }
 
@@ -159,7 +158,7 @@ public:
      * \param o The observer to connects to the subject.
      *
      * The subject doesn't take ownership of the the observer.
-     * The disconnect function of the connected observers is called at destruction of the subject.
+     * The destructor calls the disconnect of its observers in the reversed order the in which observers were connected.
      *
      * \note This function doesn't check if the observer was already connected.
      *       For example when an observer is connected 3 times then it will be notified 3 times.
@@ -345,7 +344,7 @@ public:
                 invoke( std::forward< As >( args )... );
             }
 
-            virtual void disconnect( subject< As... > * ) noexcept override
+            virtual void disconnect( const subject< As... > * ) noexcept override
             {
                 m_owner.remove_observer( this );
             }
@@ -399,7 +398,7 @@ public:
                 pg::invoke( m_function, std::forward< As >( args )... );
             }
 
-            virtual void disconnect( subject< As... > * ) noexcept override
+            virtual void disconnect( const subject< As... > * ) noexcept override
             {
                 m_owner.remove_observer( this );
             }

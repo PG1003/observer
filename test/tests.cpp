@@ -348,6 +348,45 @@ static void observer_disconnect()
     assert_true( val == 3 );
 }
 
+static void observer_notify_and_disconnect_order()
+{
+    struct test_observer final : public observer<>
+    {
+        int       &m_counter;
+        const int m_expected_value;
+
+        test_observer( int &counter, int expected_value ) noexcept
+                : m_counter( counter )
+                , m_expected_value( expected_value )
+        {}
+
+        virtual void notify() override
+        {
+            ++m_counter;
+            assert_true( m_counter == m_expected_value );
+        }
+
+        virtual void disconnect( const subject<> * ) noexcept override
+        {
+            assert_true( m_counter == m_expected_value );
+            --m_counter;
+        }
+    };
+
+    int shared_counter = 0;
+
+    test_observer to_1( shared_counter, 1 );
+    test_observer to_2( shared_counter, 2 );
+    test_observer to_3( shared_counter, 3 );
+
+    subject<> s;
+    s.connect( &to_1 );
+    s.connect( &to_2 );
+    s.connect( &to_3 );
+
+    s.notify();
+}
+
 static void block_subject()
 {
     observer_owner owner;
@@ -517,6 +556,7 @@ int main( int /* argc */, char * /* argv */[] )
     observer_owner_lifetime();
     subject_lifetime();
     observer_disconnect();
+    observer_notify_and_disconnect_order();
     block_subject();
     type_compatibility();
     invoke_function();
