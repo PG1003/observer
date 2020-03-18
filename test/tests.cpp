@@ -129,7 +129,6 @@ struct member_observers_with_owner : private observer_owner, public member_obser
     {}
 };
 
-
 ///////////////////////////////////////////////////////////////////////////////
 //                                  Tests                                    //
 ///////////////////////////////////////////////////////////////////////////////
@@ -227,6 +226,7 @@ static void member_function_observer()
     assert_true( member_observers_with_owner_.void_val == 1 );
 }
 
+
 static void subject_subject_observer()
 {
     observer_owner       owner;
@@ -309,43 +309,20 @@ static void observer_disconnect()
     int val = 0;
 
     observer_owner::connection connection_1;
-    connection_1 = owner_1.connect( subject_void, [ & ]{ ++val; } );
+    connection_1                            = owner_1.connect( subject_void, [ & ]{ ++val; } );
+    observer_owner::connection connection_2 = owner_2.connect( subject_void, [ & ]{ ++val; } );
 
-    // connection_1 shouldn't be invalidated since it was not from owner_2 and should not cause issues with owner_2.
     owner_2.disconnect( connection_1 );
+    owner_1.disconnect( connection_2 );
 
     subject_void.notify();
-    assert_true( val == 1 );
+    assert_true( val == 2 );
 
-    // Move handle to connection_2 and disconnect with the invalidated connection_1; nothing disconnected from owner.
-    const observer_owner::connection connection_2 = std::move( connection_1 );
     owner_1.disconnect( connection_1 );
+    owner_2.disconnect( connection_2 );
 
     subject_void.notify();
     assert_true( val == 2 );
-
-    // Now we now disconnect for real.
-    owner_1.disconnect( connection_2 );
-
-    subject_void.notify();
-    assert_true( val == 2 );
-
-    // Disconnecting with an invalidated connection handle should not cause issues.
-    owner_1.disconnect( connection_2 );
-
-    // Test shared connection.
-    auto shared_connection_1 = std::make_shared< observer_owner::connection >( owner_1.connect( subject_void, [ & ]{ ++val; } ) );
-    auto shared_connection_2 = shared_connection_1;
-    owner_2.disconnect( *shared_connection_1 );
-
-    subject_void.notify();
-    assert_true( val == 3 );
-
-    owner_1.disconnect( *shared_connection_1 );
-    owner_1.disconnect( *shared_connection_2 );
-
-    subject_void.notify();
-    assert_true( val == 3 );
 }
 
 static void observer_notify_and_disconnect_order()
@@ -366,7 +343,7 @@ static void observer_notify_and_disconnect_order()
             assert_true( m_counter == m_expected_value );
         }
 
-        virtual void disconnect( const subject<> * ) noexcept override
+        virtual void disconnect( const void * ) noexcept override
         {
             assert_true( m_counter == m_expected_value );
             --m_counter;
@@ -389,8 +366,8 @@ static void observer_notify_and_disconnect_order()
 
 static void block_subject()
 {
-    observer_owner owner;
-    subject<>      subject_void;
+    observer_owner      owner;
+    blockable_subject<> subject_void;
 
     int val = 0;
 
@@ -400,7 +377,7 @@ static void block_subject()
     assert_true( val == 1 );
 
     {
-        subject_blocker< subject<> > blocker( subject_void );
+        subject_blocker< blockable_subject<> > blocker( subject_void );
 
         subject_void.notify();
         assert_true( val == 1 );
@@ -414,7 +391,7 @@ static void type_compatibility()
 {
     observer_owner owner;
     subject< std::string >         subject_string;
-    subject< const std::string >   subject_const_string;
+//    subject< const std::string >   subject_const_string;
     subject< const std::string & > subject_const_string_ref;
     subject< char * >              subject_p_char;
     subject< const char * >        subject_const_p_char;
@@ -445,8 +422,8 @@ static void type_compatibility()
     owner.connect( subject_string, str           );
     owner.connect( subject_string, const_str_ref );
 
-    owner.connect( subject_const_string, str           );
-    owner.connect( subject_const_string, const_str_ref );
+//    owner.connect( subject_const_string, str           );
+//    owner.connect( subject_const_string, const_str_ref );
 
     owner.connect( subject_const_string_ref, str           );
     owner.connect( subject_const_string_ref, const_str_ref );
@@ -469,14 +446,14 @@ static void type_compatibility()
     assert_true( int_const_string_ref == 5 );
     int_reset();
 
-    subject_const_string.notify( "Foobar" );
-    subject_const_string.notify( string_value );
-    subject_const_string.notify( const_string_value );
-    subject_const_string.notify( sz_char );
-    subject_const_string.notify( const_p_char_value );
-    assert_true( int_str == 5 );
-    assert_true( int_const_string_ref == 5 );
-    int_reset();
+//    subject_const_string.notify( "Foobar" );
+//    subject_const_string.notify( string_value );
+//    subject_const_string.notify( const_string_value );
+//    subject_const_string.notify( sz_char );
+//    subject_const_string.notify( const_p_char_value );
+//    assert_true( int_str == 5 );
+//    assert_true( int_const_string_ref == 5 );
+//    int_reset();
 
     subject_const_string_ref.notify( "Foobar" );
     subject_const_string_ref.notify( string_value );
@@ -501,6 +478,7 @@ static void type_compatibility()
     assert_true( int_const_string_ref == 3 );
     assert_true( int_const_p_char == 3 );
 }
+
 
 static void invoke_function()
 {
@@ -544,6 +522,7 @@ static void invoke_function()
     pg::invoke( std_function ); // ADL kicked in... explicit use pg::invoke to avoid ambiguity with std::invoke.
     assert_true( int_std_function == 42 );
 }
+
 
 int main( int /* argc */, char * /* argv */[] )
 {

@@ -33,6 +33,10 @@ namespace pg
 namespace detail
 {
 
+template< class T > struct remove_reference      {typedef T type;};
+template< class T > struct remove_reference<T&>  {typedef T type;};
+template< class T > struct remove_reference<T&&> {typedef T type;};
+
 // https://stackoverflow.com/a/27867127
 template< typename T >
 struct invoke_helper : invoke_helper< decltype( &T::operator() ) > {};
@@ -67,7 +71,99 @@ struct invoke_helper< R ( C:: * )( A... ) const >
     }
 };
 
+/**
+ * \brief Class that calls the notification function of its observers.
+ *
+ * \tparam A The types of the values that are passed to the observers notification functions.
+ *
+ * \see observer
+ */
+template< typename B, typename ...A >
+class basic_subject_mixin : public B
+{
+public:
+    /**
+     * \brief Notifies the observers observers connected to this subject.
+     *
+     * \param args The values passed to the observer's notification function.
+     *
+     * The observers are notified in the order they are connected.
+     */
+    void notify( A... args ) const
+    {
+        for( auto o : B::observers() )
+        {
+            o->notify( args... );
+        }
+    }
+};
+
+template< typename B, typename ...A >
+class blockable_subject_mixin : public B
+{
+    int block_count = 0;
+
+public:
+    /**
+     * \brief Notifies the observers observers connected to this subject when not blocked.
+     *
+     * \param args The values passed to the observer's notification function.
+     *
+     * The observers are notified in the order they are connected.
+     */
+    void notify( A... args ) const
+    {
+        if( !block_count )
+        {
+            for( auto o : B::observers() )
+            {
+                o->notify( args... );
+            }
+        }
+    }
+
+    void block()
+    {
+        ++block_count;
+    }
+
+    void unblock()
+    {
+        --block_count;
+    }
+};
+
 }
+
+/**
+ * \brief Interface for observer objects.
+ *
+ * \tparam A Defines the types of the parameters for the observer's notify function.
+ *
+ * \see subject
+ */
+template< typename ...A >
+class observer
+{
+public:
+    virtual ~observer() noexcept = default;
+
+    /**
+     * \brief Called when the observer is disconnected from the subject.
+     *
+     * \param s A const void pointer to the subject from which the observer is disconnected.
+     *
+     * The subject calls disconnect on all its observers when the subject gets deleted or goes out of scope.
+     */
+    virtual void disconnect( const void *s ) noexcept = 0;
+
+    /**
+     *  \brief The notification function that is called when the subject notifies
+     *
+     *  \param args The values of the notification. These are defined by this class' template parameters.
+     */
+    virtual void notify( A... args ) = 0;
+};
 
 /**
  * \brief Invokes a callable with the given arguments.
@@ -87,64 +183,18 @@ inline decltype( auto ) invoke( const F function, A... args )
 }
 
 template< typename ...A >
-class subject;
-
-template< typename S >
-class subject_blocker;
-
-/**
- * \brief Interface for observer objects.
- *
- * \tparam A Defines the types of the parameters for the observer's notify function.
- *
- * \see subject
- */
-template< typename ...A >
-class observer
+class subject_base
 {
-public:
-    virtual ~observer() noexcept = default;
+    std::vector< observer< A... > * > m_observers;
 
-    /**
-     * \brief Called when the observer is disconnected from the subject.
-     *
-     * \param s The subject from which the observer is disconnected.
-     *
-     * The subject calls disconnect on all its observers when the subject gets deleted or goes out of scope.
-     */
-    virtual void disconnect( const subject< A... > * s ) noexcept = 0;
-
-    /**
-     *  \brief The notification function that is called when the subject notifies
-     *
-     *  \param args The values of the notification. These are defined by this class' template parameters.
-     */
-    virtual void notify( A... args ) = 0;
-};
-
-/**
- * \brief Class that calls the notification function of its observers.
- *
- * \tparam A The types of the values that are passed to the observers notification functions.
- *
- * \see observer
- */
-template< typename ...A >
-class subject
-{
-    using observer_type = observer< A... >;
-
-    subject( const subject< A... > & ) = delete;
-    subject & operator=( const subject< A... > & ) = delete;
-
-    friend class subject_blocker< subject< A... > >;
-
-    std::vector< observer_type * > m_observers;
+protected:
+    const std::vector< observer< A... > * > & observers() const
+    {
+        return m_observers;
+    }
 
 public:
-    subject() noexcept = default;
-
-    ~subject() noexcept
+    ~subject_base() noexcept
     {
         for( auto it = m_observers.rbegin() ; it != m_observers.crend() ; ++it )
         {
@@ -189,19 +239,47 @@ public:
             m_observers.erase( ( ++it_find ).base() );
         }
     }
+};
+
+template< typename ...A >
+using subject = detail::basic_subject_mixin< subject_base< A... >, A... >;
+
+template< typename ...A >
+using blockable_subject = detail::blockable_subject_mixin< subject_base< A... >, A... >;
+
+/**
+ * \brief Blocks temporary the notifications of a subject.
+ *
+ * \tparam S The type of the blocked subject.
+ *
+ * This class use RAII. The class blocks notifications when it is constructed and unblocked at destruction,
+ * for example when a subject_blocker instance leaves its scope.
+ */
+template< typename S >
+class subject_blocker
+{
+    S * m_subject = nullptr;
+
+public:
+    subject_blocker() noexcept = default;
 
     /**
-     * \brief Notifies the observers observers connected to this subject.
-     *
-     * \param args The values passed to the observer's notification function.
-     *
-     * The observers are notified in the order they are connected.
+     * \param subject A reference to the subject which notifications must be blocked.
      */
-    void notify( A... args ) const
+    subject_blocker( S & subject ) noexcept
+            : m_subject( &subject )
     {
-        for( auto o : m_observers )
+        if( m_subject )
         {
-            o->notify( args... );
+            m_subject->block();
+        }
+    }
+
+    ~subject_blocker() noexcept
+    {
+        if( m_subject )
+        {
+            m_subject->unblock();
         }
     }
 };
@@ -213,17 +291,92 @@ public:
  */
 class observer_owner
 {
-public:
-    class connection;
-
-private:
     class abstract_owner_observer
     {
     public:
-        connection * m_connection = nullptr;
-
-        virtual ~abstract_owner_observer() noexcept;
+        virtual ~abstract_owner_observer() noexcept = default;
         virtual void remove_from_subject() noexcept = 0;
+    };
+
+    template< typename B, typename S, typename ...Ao >
+    class owner_observer final : public observer< Ao... >, public abstract_owner_observer, B
+    {
+        observer_owner   &m_owner;
+        S                &m_subject;
+
+        virtual void notify( Ao... args ) override
+        {
+            B::invoke( std::forward< Ao >( args )... );
+        }
+
+        virtual void disconnect( const void * ) noexcept override
+        {
+            m_owner.remove_observer( this );
+        }
+
+        virtual void remove_from_subject() noexcept override
+        {
+            m_subject.disconnect( this );
+        }
+
+    public:
+        template< typename ...Ab >
+        owner_observer( observer_owner &owner, S &subject, Ab&&... args_base )
+            : B( std::forward< Ab >( args_base )... )
+            , m_owner( owner )
+            , m_subject( subject )
+        {}
+    };
+
+    template< typename B, typename S >
+    struct observer_mixin_factory : observer_mixin_factory< B, decltype( &S::notify ) >
+    {};
+
+    template< typename B, typename R, typename S, typename ...As >
+    struct observer_mixin_factory< B, R ( S:: * )( As... ) >
+    {
+        using type = owner_observer< B, S, As... >;
+    };
+
+    template< typename B, typename R, typename S, typename ...As >
+    struct observer_mixin_factory< B, R ( S:: * )( As... ) const >
+    {
+        using type = owner_observer< B, S, As... >;
+    };
+
+    template< typename Ro, typename O, typename ...Ao >
+    class member_function_observer
+    {
+        O * const        m_instance;
+        Ro( O::* const   m_function )( Ao... );
+
+    protected:
+        member_function_observer( O * const instance, Ro ( O::* const function )( Ao... ) )
+                : m_instance( instance )
+                , m_function( function )
+        {}
+
+        void invoke( Ao&&... args, ... )
+        {
+            ( m_instance->*m_function )( std::forward< Ao >( args )... );
+        }
+    };
+
+    template< typename F >
+    class function_observer
+    {
+        F m_function;
+
+    protected:
+        function_observer( const F &f )
+                : m_function( f )
+        {}
+
+        template< typename ...As >
+        void invoke( As&&... args )
+        {
+            detail::invoke_helper< F >::invoke( m_function, std::forward< As >( args )... );
+        }
     };
 
     observer_owner( const observer_owner & ) = delete;
@@ -239,68 +392,33 @@ private:
         }
     }
 
+    void add_observer( abstract_owner_observer * const o ) noexcept
+    {
+        m_observers.insert( o );
+    }
+
 public:
     /**
      * \brief A handle to a subject <--> observer connection.
      *
-     * Connection handles are invalidated when they are used to disconnect or when the observer_owner is destroyed.
-     *
-     * There is only one instance of a connection handle created for each connection, they cannot be copied.
-     * However, a std::shared_ptr can be used when a connection handle needs to be shared between multiple objects.
-     *
-     * \code{.cpp}
-     * auto shared_connection = std::make_shared< observer_owner::connection >( my_observer_owner.connect( my_subject, my_function ) );
-     * \endcode
+     * \note Reuse of this handle may lead to undefined behavior.
      *
      * \see observer_owner::connect observer_owner::disconnect
      */
     class connection
     {
-        mutable abstract_owner_observer * m_observer = nullptr;
+        friend observer_owner;
+        abstract_owner_observer * m_h = nullptr;
 
-        // Only let observer_owner create valid connection handles.
-        friend class observer_owner;
-        connection( abstract_owner_observer * o ) noexcept
-                : m_observer( o )
-        {
-            m_observer->m_connection = this;
-        }
+        connection( abstract_owner_observer * h )
+                : m_h( h )
+        {}
 
     public:
-    	connection() noexcept = default;
-
-        connection & operator=( connection && c ) noexcept
-        {
-            if( c.m_observer )
-            {
-                m_observer               = c.m_observer;
-                m_observer->m_connection = this;
-                c.m_observer             = nullptr;
-            }
-
-            return *this;
-        }
-
-        connection( connection && c ) noexcept
-        {
-            if( c.m_observer )
-            {
-                m_observer               = c.m_observer;
-                m_observer->m_connection = this;
-                c.m_observer             = nullptr;
-            }
-        }
-
-        ~connection() noexcept
-        {
-            if( m_observer )
-            {
-                m_observer->m_connection = nullptr;
-            }
-        }
+        connection() noexcept = default;
     };
 
-    observer_owner() noexcept = default;
+    observer_owner() = default;
 
     ~observer_owner() noexcept
     {
@@ -324,49 +442,11 @@ public:
      *
      * \note The lifetime of the instance must exceed the observer_owner's lifetime.
      */
-    template< typename I, typename R, typename ...As, typename ...Ao >
-    connection connect( subject< As... > &s, I * instance, R ( I::* const function )( Ao... ) ) noexcept
+    template< typename S, typename R, typename O, typename ...Ao >
+    connection connect( S &s, O * instance, R ( O::* const function )( Ao... ) ) noexcept
     {
-        class owner_observer final : public observer< As ... >, public abstract_owner_observer
-        {
-            observer_owner   &m_owner;
-            subject< As... > &m_subject;
-            I * const        m_instance;
-            R( I::* const    m_function )( Ao... );
-
-            void invoke( Ao... args, ... )
-            {
-                ( m_instance->*m_function )( std::forward< Ao >( args )... );
-            }
-
-            virtual void notify( As... args ) override
-            {
-                invoke( std::forward< As >( args )... );
-            }
-
-            virtual void disconnect( const subject< As... > * ) noexcept override
-            {
-                m_owner.remove_observer( this );
-            }
-
-            virtual void remove_from_subject() noexcept override
-            {
-                m_subject.disconnect( this );
-            }
-
-        public:
-            owner_observer( observer_owner &owner, subject< As... > &s, I * const instance, R ( I::* const f )( Ao... ) ) noexcept
-                    : m_owner( owner )
-                    , m_subject( s )
-                    , m_instance( instance )
-                    , m_function( f )
-            {
-                m_owner.m_observers.insert( this );
-                m_subject.connect( this );
-            }
-        };
-
-        return new owner_observer( *this, s, instance, function );
+        using _observer = typename observer_mixin_factory< member_function_observer< R, O, Ao... >, S >::type;
+        return new _observer( *this, s, instance, function );
     }
 
     /**
@@ -375,7 +455,7 @@ public:
      * \param s        The subject from which \em function will receive notifications.
      * \param function A callable such as a free function, lambda, std::function or a functor that is called when the subject notifies.
      *
-     * \return Returns an observer_owner::connection handle.
+     * \return Returns a connection handle.
      *
      * The number of parameter that \em function accepts can be less than the number of values that comes with the notification.
      *
@@ -384,42 +464,11 @@ public:
      *
      * \note When a callable has side effects than the lifetime of these side effects must exceed the observer_owner's lifetime.
      */
-    template< typename F, typename ...As >
-    connection connect( subject< As... > &s, const F function ) noexcept
+    template< typename S, typename F >
+    connection connect( S &s, F function ) noexcept
     {
-        class owner_observer final : public observer< As... >, public abstract_owner_observer
-        {
-            observer_owner   &m_owner;
-            subject< As... > &m_subject;
-            const F          m_function;
-
-            virtual void notify( As... args ) override
-            {
-                pg::invoke( m_function, std::forward< As >( args )... );
-            }
-
-            virtual void disconnect( const subject< As... > * ) noexcept override
-            {
-                m_owner.remove_observer( this );
-            }
-
-            virtual void remove_from_subject() noexcept override
-            {
-                m_subject.disconnect( this );
-            }
-
-        public:
-            owner_observer( observer_owner &owner, subject< As... > &s, const F f ) noexcept
-                    : m_owner( owner )
-                    , m_subject( s )
-                    , m_function( f )
-            {
-                m_owner.m_observers.insert( this );
-                m_subject.connect( this );
-            }
-        };
-
-        return new owner_observer( *this, s, function );
+        using _observer = typename observer_mixin_factory< function_observer< F >, S >::type;
+        return new _observer( *this, s, function );
     }
 
     /**
@@ -438,7 +487,7 @@ public:
     template< typename ...As1, typename ...As2 >
     connection connect( subject< As1... > &s1, subject< As2... > &s2 ) noexcept
     {
-        return connect( s1, [&]( As2 &&... args ){ s2.notify( std::forward< As2 >( args )... ); } );
+        return connect( s1, [&]( As2... args ){ s2.notify( std::forward< As2 >( args )... ); } );
     }
 
     /**
@@ -452,62 +501,19 @@ public:
      */
     void disconnect( const connection &c ) noexcept
     {
-        if( c.m_observer )
+        if( c.m_h )
         {
-        	// Disconnect only when its our connection.
-            auto it = m_observers.find( c.m_observer );
+            // Disconnect only when its our connection.
+            auto it = m_observers.find( c.m_h );
             if( it != m_observers.cend() )
             {
-                c.m_observer->remove_from_subject();
+                c.m_h->remove_from_subject();
                 m_observers.erase( it );
-                delete c.m_observer;
+                delete c.m_h;
             }
         }
     }
 };
 
-observer_owner::abstract_owner_observer::~abstract_owner_observer()
-{
-    if( m_connection )
-    {
-        // Invalidate connection handle
-        m_connection->m_observer = nullptr;
-    }
 }
 
-/**
- * \brief Blocks temporary the notifications of a subject.
- *
- * \tparam S The type of the blocked subject.
- *
- * This class use RAII. The class blocks notifications when it is constructed and unblocked at destruction,
- * for example when a subject_blocker instance leaves its scope.
- */
-template< typename S >
-class subject_blocker
-{
-    subject_blocker( const subject_blocker< S > & ) = delete;
-    subject_blocker & operator=( const subject_blocker< S > & ) = delete;
-
-    S                                          &m_subject;
-    std::vector< typename S::observer_type * > m_observers;
-
-public:
-    subject_blocker( subject_blocker< S > && ) = default;
-
-    /**
-     * \param subject A reference to the subject which notifications must be blocked.
-     */
-    subject_blocker( S &subject ) noexcept
-            : m_subject( subject )
-    {
-        std::swap( m_observers, m_subject.m_observers );
-    }
-
-    ~subject_blocker() noexcept
-    {
-        std::swap( m_observers, m_subject.m_observers );
-    }
-};
-
-}
