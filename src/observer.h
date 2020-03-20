@@ -33,10 +33,6 @@ namespace pg
 namespace detail
 {
 
-template< class T > struct remove_reference      {typedef T type;};
-template< class T > struct remove_reference<T&>  {typedef T type;};
-template< class T > struct remove_reference<T&&> {typedef T type;};
-
 // https://stackoverflow.com/a/27867127
 template< typename T >
 struct invoke_helper : invoke_helper< decltype( &T::operator() ) > {};
@@ -91,13 +87,25 @@ public:
      */
     void notify( A... args ) const
     {
-        for( auto o : B::observers() )
+        for( auto o : B::m_observers )
         {
             o->notify( args... );
         }
     }
 };
 
+/**
+ * \brief Class that calls the notification function of its observers.
+ *
+ * \tparam A The types of the values that are passed to the observers notification functions.
+ *
+ * This subject is blockable.
+ * It maintains a block count that is tested before the notification of its observers.
+ * This subject blocks notifications when the block count is non-zero.
+ *
+ * \see basic_subject_mixin
+ * \see observer
+ */
 template< typename B, typename ...A >
 class blockable_subject_mixin : public B
 {
@@ -115,21 +123,69 @@ public:
     {
         if( !block_count )
         {
-            for( auto o : B::observers() )
+            for( auto o : B::m_observers )
             {
                 o->notify( args... );
             }
         }
     }
 
+    /**
+     * \brief Blocks the notification of its observers when called.
+     * 
+     * This function can be called multiple times which increases a block count.
+     * then you must call \em unblock the same number of times or \em set_block_set( false ).
+     *
+     * Notifications are not buffered when the subject is blocked.
+     *
+     * \see blockable_subject_mixin::unblock
+     * \see blockable_subject_mixin::set_block_state
+     */
     void block()
     {
         ++block_count;
     }
 
+    /**
+     * \brief Decreases the block count and unblocks the subject when the count got 0.
+     *
+     * This function can be called multiple times even when the subject is already unblocked.
+     *
+     * \see blockable_subject_mixin::block
+     * \see blockable_subject_mixin::set_block_state
+     */
     void unblock()
     {
         --block_count;
+    }
+
+    /**
+     * \brief Overrides the block count when the state differs from the current block state.
+     *
+     * \param block_state The new block state.
+     *
+     * When the block count is 0 when the block_state is true, the block count is set to 1.
+     * In case the block count is larger than 0 and the block_state is false, the block count is set to 0.
+     *
+     * The block count won't change if block_state is true and the block count is 0 or the block_state is false and the block count is 0.
+     *
+     * \see blockable_subject_mixin::block
+     * \see blockable_subject_mixin::unblock
+     */
+    bool set_block_state( bool block_state )
+    {
+        if( block_count && !block_state )
+        {
+            block_count = 0;
+            return true;
+        }
+        else if( !block_count && block_state )
+        {
+            block_count = 1;
+            return false;
+        }
+
+        return block_state; // No state change
     }
 };
 
@@ -185,13 +241,8 @@ inline decltype( auto ) invoke( const F function, A... args )
 template< typename ...A >
 class subject_base
 {
-    std::vector< observer< A... > * > m_observers;
-
 protected:
-    const std::vector< observer< A... > * > & observers() const
-    {
-        return m_observers;
-    }
+    std::vector< observer< A... > * > m_observers;
 
 public:
     ~subject_base() noexcept
@@ -325,21 +376,24 @@ class observer_owner
             : B( std::forward< Ab >( args_base )... )
             , m_owner( owner )
             , m_subject( subject )
-        {}
+        {
+            m_owner.add_observer( this );
+            m_subject.connect( this );
+        }
     };
 
     template< typename B, typename S >
-    struct observer_mixin_factory : observer_mixin_factory< B, decltype( &S::notify ) >
+    struct observer_type_factory : observer_type_factory< B, decltype( &S::notify ) >
     {};
 
     template< typename B, typename R, typename S, typename ...As >
-    struct observer_mixin_factory< B, R ( S:: * )( As... ) >
+    struct observer_type_factory< B, R ( S:: * )( As... ) >
     {
         using type = owner_observer< B, S, As... >;
     };
 
     template< typename B, typename R, typename S, typename ...As >
-    struct observer_mixin_factory< B, R ( S:: * )( As... ) const >
+    struct observer_type_factory< B, R ( S:: * )( As... ) const >
     {
         using type = owner_observer< B, S, As... >;
     };
@@ -347,8 +401,8 @@ class observer_owner
     template< typename Ro, typename O, typename ...Ao >
     class member_function_observer
     {
-        O * const        m_instance;
-        Ro( O::* const   m_function )( Ao... );
+        O * const      m_instance;
+        Ro( O::* const m_function )( Ao... );
 
     protected:
         member_function_observer( O * const instance, Ro ( O::* const function )( Ao... ) )
@@ -445,8 +499,8 @@ public:
     template< typename S, typename R, typename O, typename ...Ao >
     connection connect( S &s, O * instance, R ( O::* const function )( Ao... ) ) noexcept
     {
-        using _observer = typename observer_mixin_factory< member_function_observer< R, O, Ao... >, S >::type;
-        return new _observer( *this, s, instance, function );
+        using observer_type = typename observer_type_factory< member_function_observer< R, O, Ao... >, S >::type;
+        return new observer_type( *this, s, instance, function );
     }
 
     /**
@@ -467,8 +521,8 @@ public:
     template< typename S, typename F >
     connection connect( S &s, F function ) noexcept
     {
-        using _observer = typename observer_mixin_factory< function_observer< F >, S >::type;
-        return new _observer( *this, s, function );
+        using observer_type = typename observer_type_factory< function_observer< F >, S >::type;
+        return new observer_type( *this, s, function );
     }
 
     /**

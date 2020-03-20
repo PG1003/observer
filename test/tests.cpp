@@ -385,6 +385,22 @@ static void block_subject()
 
     subject_void.notify();
     assert_true( val == 2 );
+
+    subject_void.block();
+    subject_void.block();
+
+    subject_void.notify();
+    assert_true( val == 2 );
+
+    subject_void.set_block_state( false );
+
+    subject_void.notify();
+    assert_true( val == 3 );
+
+    subject_void.set_block_state( true );
+
+    subject_void.notify();
+    assert_true( val == 3 );
 }
 
 static void type_compatibility()
