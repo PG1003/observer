@@ -6,7 +6,7 @@
 using namespace std;
 using namespace std::chrono;
 
-int count_value = 0;
+volatile int count_value = 0;
 int iterations  = 1000000;
 int increment   = 1;
 
