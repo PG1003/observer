@@ -398,14 +398,14 @@ class observer_owner
         using type = owner_observer< B, S, As... >;
     };
 
-    template< typename Ro, typename O, typename ...Ao >
+    template< typename O, typename F, typename ...Ao >
     class member_function_observer
     {
-        O * const      m_instance;
-        Ro( O::* const m_function )( Ao... );
+        O * const m_instance;
+        F         m_function;
 
     protected:
-        member_function_observer( O * const instance, Ro ( O::* const function )( Ao... ) )
+        member_function_observer( O * instance, F function )
                 : m_instance( instance )
                 , m_function( function )
         {}
@@ -499,7 +499,14 @@ public:
     template< typename S, typename R, typename O, typename ...Ao >
     connection connect( S &s, O * instance, R ( O::* const function )( Ao... ) ) noexcept
     {
-        using observer_type = typename observer_type_factory< member_function_observer< R, O, Ao... >, S >::type;
+        using observer_type = typename observer_type_factory< member_function_observer< O, R ( O::* )( Ao... ), Ao... >, S >::type;
+        return new observer_type( *this, s, instance, function );
+    }
+
+    template< typename S, typename R, typename O, typename ...Ao >
+    connection connect( S &s, O * instance, R ( O::* const function )( Ao... ) const ) noexcept
+    {
+        using observer_type = typename observer_type_factory< member_function_observer< O, R ( O::* )( Ao... ) const, Ao... >, S >::type;
         return new observer_type( *this, s, instance, function );
     }
 
@@ -523,25 +530,6 @@ public:
     {
         using observer_type = typename observer_type_factory< function_observer< F >, S >::type;
         return new observer_type( *this, s, function );
-    }
-
-    /**
-     * \brief Connects a subject to another subject.
-     *
-     * \param s1 The subject from which the other subject will be notified.
-     * \param s2 The subject that notifies its observers when the subject to which it is connected notifies
-     *
-     * \return Returns an observer_owner::connection handle.
-     *
-     * The number of paramemters that \em s2 accepts in its notify function can be less than number of values
-     * that comes with the notificatoin from \em s1.
-     *
-     * \note The lifetime of the notified subject and its side effects must exceed the observer_owner's lifetime.
-     */
-    template< typename ...As1, typename ...As2 >
-    connection connect( subject< As1... > &s1, subject< As2... > &s2 ) noexcept
-    {
-        return connect( s1, [&]( As2... args ){ s2.notify( std::forward< As2 >( args )... ); } );
     }
 
     /**

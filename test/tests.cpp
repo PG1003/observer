@@ -243,11 +243,11 @@ static void subject_subject_observer()
     int  void_val        = 0;
 
     owner.connect( subject_int_char1, [ & ]( int i, char c ){ int_char_1_ival = i; int_char_1_cval = c; } );
-    owner.connect( subject_int_char1, subject_int_char2 );
+    owner.connect( subject_int_char1, &subject_int_char2, &subject< int, char >::notify );
     owner.connect( subject_int_char2, [ & ]( int i, char c ){ int_char_2_ival = i; int_char_2_cval = c; } );
-    owner.connect( subject_int_char2, subject_int );
+    owner.connect( subject_int_char2, &subject_int, &subject< int >::notify );
     owner.connect( subject_int, [ & ]( int i ){ int_val = i; } );
-    owner.connect( subject_int, subject_void );
+    owner.connect( subject_int, &subject_void, &subject<>::notify );
     owner.connect( subject_void, [ & ]{ ++void_val; } );
 
     subject_int_char1.notify( 33, 'R' );
