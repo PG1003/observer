@@ -343,7 +343,7 @@ static void observer_notify_and_disconnect_order()
             assert_true( m_counter == m_expected_value );
         }
 
-        virtual void disconnect( const void * ) noexcept override
+        virtual void disconnect() noexcept override
         {
             assert_true( m_counter == m_expected_value );
             --m_counter;

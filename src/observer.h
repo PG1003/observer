@@ -207,11 +207,9 @@ public:
     /**
      * \brief Called when the observer is disconnected from the subject.
      *
-     * \param s A const void pointer to the subject from which the observer is disconnected.
-     *
      * The subject calls disconnect on all its observers when the subject gets deleted or goes out of scope.
      */
-    virtual void disconnect( const void *s ) noexcept = 0;
+    virtual void disconnect() noexcept = 0;
 
     /**
      *  \brief The notification function that is called when the subject notifies
@@ -249,7 +247,7 @@ public:
     {
         for( auto it = m_observers.rbegin() ; it != m_observers.crend() ; ++it )
         {
-            ( *it )->disconnect( this );
+            ( *it )->disconnect();
         }
     }
 
@@ -360,7 +358,7 @@ class observer_owner
             B::invoke( std::forward< Ao >( args )... );
         }
 
-        virtual void disconnect( const void * ) noexcept override
+        virtual void disconnect() noexcept override
         {
             m_owner.remove_observer( this );
         }
@@ -422,8 +420,8 @@ class observer_owner
         F m_function;
 
     protected:
-        function_observer( const F &f )
-                : m_function( f )
+        function_observer( const F &function )
+                : m_function( function )
         {}
 
         template< typename ...As >
