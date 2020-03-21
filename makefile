@@ -5,6 +5,7 @@ LDFLAGS =
 
 EXAMPLEDIR = examples
 TESTDIR = test
+BENCHMARKDIR = benchmark
 OBJDIR = obj
 OUTDIR = out
 
@@ -16,7 +17,11 @@ EXAMPLESOURCES = $(shell find $(EXAMPLEDIR) -type f -name '*.cpp')
 EXAMPLEOBJECTS = $(patsubst $(EXAMPLEDIR)/%.cpp, $(OBJDIR)/%.o, $(EXAMPLESOURCES))
 EXAMPLES = $(patsubst $(OBJDIR)/%.o, $(OUTDIR)/%, $(EXAMPLEOBJECTS))
 
-.phony: clean tests examples
+BENCHMARKSOURCES = $(shell find $(BENCHMARKDIR) -type f -name '*.cpp')
+BENCHMARKOBJECTS = $(patsubst $(BENCHMARKDIR)/%.cpp, $(OBJDIR)/%.o, $(BENCHMARKSOURCES))
+BENCHMARKS = $(patsubst $(OBJDIR)/%.o, $(OUTDIR)/%, $(BENCHMARKOBJECTS))
+
+.phony: clean tests examples benchmarks
 
 $(OBJDIR):
 	test ! -d $(OBJDIR) && mkdir $(OBJDIR)
@@ -24,7 +29,7 @@ $(OBJDIR):
 $(OUTDIR):
 	test ! -d $(OUTDIR) && mkdir $(OUTDIR)
 	
-all: tests examples
+all: tests examples benchmarks
 
 tests:$(OBJDIR) $(OUTDIR) $(TESTS) 
 
@@ -41,6 +46,14 @@ $(EXAMPLES): $(EXAMPLEOBJECTS)
 
 $(EXAMPLEOBJECTS): $(EXAMPLESOURCES)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $(patsubst $(OBJDIR)%.o, $(EXAMPLEDIR)%.cpp, $@) -o $@
+
+benchmarks:$(OBJDIR) $(OUTDIR) $(BENCHMARKS)
+
+$(BENCHMARKS): $(BENCHMARKOBJECTS)
+	$(CXX) $(CXXFLAGS) -o $@ $(patsubst $(OUTDIR)%, $(OBJDIR)%.o, $@)
+	
+$(BENCHMARKOBJECTS): $(BENCHMARKSOURCES)
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $(patsubst $(OBJDIR)%.o, $(BENCHMARKDIR)%.cpp, $@) -o $@
 
 clean:
 	rm -rf $(OBJDIR)
