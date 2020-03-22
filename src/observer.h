@@ -381,19 +381,19 @@ class observer_owner
     };
 
     template< typename B, typename S >
-    struct observer_type_factory : observer_type_factory< B, decltype( &S::notify ) >
+    struct observer_type_factory : observer_type_factory< B, decltype( &S::connect ) >
     {};
 
-    template< typename B, typename R, typename S, typename ...As >
-    struct observer_type_factory< B, R ( S:: * )( As... ) >
+    template< typename B, typename R, typename S, typename ...Ao >
+    struct observer_type_factory< B, R ( S:: * )( observer< Ao... > * ) >
     {
-        using type = owner_observer< B, S, As... >;
+        using type = owner_observer< B, S, Ao... >;
     };
 
-    template< typename B, typename R, typename S, typename ...As >
-    struct observer_type_factory< B, R ( S:: * )( As... ) const >
+    template< typename B, typename R, typename S, typename ...Ao >
+    struct observer_type_factory< B, R ( S:: * )( observer< Ao... > * ) const >
     {
-        using type = owner_observer< B, S, As... >;
+        using type = owner_observer< B, S, Ao... >;
     };
 
     template< typename O, typename F, typename ...Ao >
