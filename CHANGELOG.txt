@@ -1,7 +1,12 @@
-# WIP 
+# 1.1.1
+
+- Restored the detail namespace in observer.h. 
+- Added a simple benchmark to get an idea about the overhead.
+
+# 1.1.0
 
 - The destructor of subject now calls the disconnect of its observers in the reversed order the in which observers were connected.
-- Refactored the connection handle. The connection handle is now invalidated when the observer disconnects. This is a breaking change.
+- Refactored the connection handle.
 - Made pg::invoke part of the public API.
 - Added doxygen documentation for the public API.
 - Changed the observer interface to allow custom observer types.
