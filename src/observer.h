@@ -30,6 +30,34 @@
 namespace pg
 {
 
+/**
+ * \brief Interface for observer objects.
+ *
+ * \tparam A Defines the types of the parameters for the observer's notify function.
+ *
+ * \see subject
+ */
+template< typename ...A >
+class observer
+{
+public:
+    virtual ~observer() noexcept = default;
+
+    /**
+     * \brief Called when the observer is disconnected from the subject.
+     *
+     * The subject calls disconnect on all its observers when the subject gets deleted or goes out of scope.
+     */
+    virtual void disconnect() noexcept = 0;
+
+    /**
+     *  \brief The notification function that is called when the subject notifies
+     *
+     *  \param args The values of the notification. These are defined by this class' template parameters.
+     */
+    virtual void notify( A... args ) = 0;
+};
+
 namespace detail
 {
 
@@ -67,157 +95,42 @@ struct invoke_helper< R ( C:: * )( A... ) const >
     }
 };
 
-/**
- * \brief Class that calls the notification function of its observers.
- *
- * \tparam A The types of the values that are passed to the observers notification functions.
- *
- * \see observer
- */
-template< typename B, typename ...A >
-class basic_subject_mixin : public B
+template< typename ...A >
+class subject_base
 {
-public:
-    /**
-     * \brief Notifies the observers observers connected to this subject.
-     *
-     * \param args The values passed to the observer's notification function.
-     *
-     * The observers are notified in the order they are connected.
-     */
-    void notify( A... args ) const
+protected:
+    std::vector< observer< A... > * > m_observers;
+
+    ~subject_base() noexcept
     {
-        for( auto o : B::m_observers )
+        for( auto it = m_observers.rbegin() ; it != m_observers.crend() ; ++it )
         {
-            o->notify( args... );
+            ( *it )->disconnect();
         }
     }
-};
-
-/**
- * \brief Class that calls the notification function of its observers.
- *
- * \tparam A The types of the values that are passed to the observers notification functions.
- *
- * This subject is blockable.
- * It maintains a block count that is tested before the notification of its observers.
- * This subject blocks notifications when the block count is non-zero.
- *
- * \see basic_subject_mixin
- * \see observer
- */
-template< typename B, typename ...A >
-class blockable_subject_mixin : public B
-{
-    int block_count = 0;
 
 public:
-    /**
-     * \brief Notifies the observers observers connected to this subject when not blocked.
-     *
-     * \param args The values passed to the observer's notification function.
-     *
-     * The observers are notified in the order they are connected.
-     */
-    void notify( A... args ) const
+    void connect( observer< A... > * const o ) noexcept
     {
-        if( !block_count )
-        {
-            for( auto o : B::m_observers )
-            {
-                o->notify( args... );
-            }
-        }
+        m_observers.push_back( o );
     }
 
-    /**
-     * \brief Blocks the notification of its observers when called.
-     * 
-     * This function can be called multiple times which increases a block count.
-     * then you must call \em unblock the same number of times or \em set_block_set( false ).
-     *
-     * Notifications are not buffered when the subject is blocked.
-     *
-     * \see blockable_subject_mixin::unblock
-     * \see blockable_subject_mixin::set_block_state
-     */
-    void block()
+    void disconnect( const observer< A... > * const o ) noexcept
     {
-        ++block_count;
-    }
-
-    /**
-     * \brief Decreases the block count and unblocks the subject when the count got 0.
-     *
-     * This function can be called multiple times even when the subject is already unblocked.
-     *
-     * \see blockable_subject_mixin::block
-     * \see blockable_subject_mixin::set_block_state
-     */
-    void unblock()
-    {
-        --block_count;
-    }
-
-    /**
-     * \brief Overrides the block count when the state differs from the current block state.
-     *
-     * \param block_state The new block state.
-     *
-     * When the block count is 0 when the block_state is true, the block count is set to 1.
-     * In case the block count is larger than 0 and the block_state is false, the block count is set to 0.
-     *
-     * The block count won't change if block_state is true and the block count is 0 or the block_state is false and the block count is 0.
-     *
-     * \see blockable_subject_mixin::block
-     * \see blockable_subject_mixin::unblock
-     */
-    bool set_block_state( bool block_state )
-    {
-        if( block_count && !block_state )
+        // Iterate reversed over the m_observers since we expect that observers that
+        // are frequently connected and disconnected resides at the end of the vector.
+        auto it_find = std::find_if( m_observers.crbegin(), m_observers.crend(), [o]( const auto &other )
         {
-            block_count = 0;
-            return true;
-        }
-        else if( !block_count && block_state )
+            return other == o;
+        } );
+        if( it_find != m_observers.crend() )
         {
-            block_count = 1;
-            return false;
+            m_observers.erase( ( ++it_find ).base() );
         }
-
-        return block_state; // No state change
     }
 };
 
 }
-
-/**
- * \brief Interface for observer objects.
- *
- * \tparam A Defines the types of the parameters for the observer's notify function.
- *
- * \see subject
- */
-template< typename ...A >
-class observer
-{
-public:
-    virtual ~observer() noexcept = default;
-
-    /**
-     * \brief Called when the observer is disconnected from the subject.
-     *
-     * The subject calls disconnect on all its observers when the subject gets deleted or goes out of scope.
-     */
-    virtual void disconnect() noexcept = 0;
-
-    /**
-     *  \brief The notification function that is called when the subject notifies
-     *
-     *  \param args The values of the notification. These are defined by this class' template parameters.
-     */
-    virtual void notify( A... args ) = 0;
-};
 
 /**
  * \brief Invokes a callable with the given arguments.
@@ -236,65 +149,126 @@ inline decltype( auto ) invoke( const F function, A... args )
     return detail::invoke_helper< F >::invoke( function, std::forward< A >( args )... );
 }
 
+/**
+ * \brief Class that calls the notification function of its observers.
+ *
+ * \tparam A The types of the values that are passed to the observers notification functions.
+ *
+ * \see observer
+ */
 template< typename ...A >
-class subject_base
+class subject : public detail::subject_base< A... >
 {
-protected:
-    std::vector< observer< A... > * > m_observers;
-
 public:
-    ~subject_base() noexcept
-    {
-        for( auto it = m_observers.rbegin() ; it != m_observers.crend() ; ++it )
-        {
-            ( *it )->disconnect();
-        }
-    }
-
     /**
-     * \brief Connects a observer to the subject.
+     * \brief Notifies the observers observers connected to this subject.
      *
-     * \param o The observer to connects to the subject.
+     * \param args The values passed to the observer's notification function.
      *
-     * The subject doesn't take ownership of the the observer.
-     * The destructor calls the disconnect of its observers in the reversed order the in which observers were connected.
-     *
-     * \note This function doesn't check if the observer was already connected.
-     *       For example when an observer is connected 3 times then it will be notified 3 times.
+     * The observers are notified in the order they are connected.
      */
-    void connect( observer< A... > * const o ) noexcept
+    void notify( A... args ) const
     {
-        m_observers.push_back( o );
-    }
-
-    /**
-     *  \brief Disconnects a observer from the subject.
-     *
-     *  \param o The observer to disconnect from the subject.
-     *
-     *  \note It is possible to connect the same observer a multiple times.
-     *        When this is the case, the observer must to be disconnected the same number of times it was connected.
-     */
-    void disconnect( const observer< A... > * const o ) noexcept
-    {
-        // Iterate reversed over the m_observers since we expect that observers that
-        // are frequently connected and disconnected resides at the end of the vector.
-        auto it_find = std::find_if( m_observers.crbegin(), m_observers.crend(), [o]( const auto &other )
+        for( auto o : detail::subject_base< A... >::m_observers )
         {
-            return other == o;
-        } );
-        if( it_find != m_observers.crend() )
-        {
-            m_observers.erase( ( ++it_find ).base() );
+            o->notify( args... );
         }
     }
 };
 
+/**
+ * \brief Class that calls the notification function of its observers.
+ *
+ * \tparam A The types of the values that are passed to the observers notification functions.
+ *
+ * This subject type is blockable.
+ * It maintains a block count that is tested before the notification of its observers.
+ * This subject blocks notifications when the block count is non-zero.
+ *
+ * \see observer
+ */
 template< typename ...A >
-using subject = detail::basic_subject_mixin< subject_base< A... >, A... >;
+class blockable_subject : public detail::subject_base< A... >
+{
+    int block_count = 0;
 
-template< typename ...A >
-using blockable_subject = detail::blockable_subject_mixin< subject_base< A... >, A... >;
+public:
+    /**
+     * \brief Notifies the observers observers connected to this subject when not blocked.
+     *
+     * \param args The values passed to the observer's notification function.
+     *
+     * The observers are notified in the order they are connected.
+     */
+    void notify( A... args ) const
+    {
+        if( !block_count )
+        {
+            for( auto o : detail::subject_base< A... >::m_observers )
+            {
+                o->notify( args... );
+            }
+        }
+    }
+
+    /**
+     * \brief Blocks the notification of its observers when called.
+     * 
+     * This function can be called multiple times which increases a block count.
+     * then you must call \em unblock the same number of times or \em set_block_set( false ).
+     *
+     * Notifications are not buffered when the subject is blocked.
+     *
+     * \see blockable_subject::unblock
+     * \see blockable_subject::set_block_state
+     */
+    void block()
+    {
+        ++block_count;
+    }
+
+    /**
+     * \brief Decreases the block count and unblocks the subject when the count got 0.
+     *
+     * This function can be called multiple times even when the subject is already unblocked.
+     *
+     * \see blockable_subject::block
+     * \see blockable_subject::set_block_state
+     */
+    void unblock()
+    {
+        --block_count;
+    }
+
+    /**
+     * \brief Overrides the block count when the state differs from the current block state.
+     *
+     * \param block_state The new block state.
+     *
+     * When the block count is 0 when the block_state is true, the block count is set to 1.
+     * In case the block count is larger than 0 and the block_state is false, the block count is set to 0.
+     *
+     * The block count won't change if block_state is true and the block count is 0 or the block_state is false and the block count is 0.
+     *
+     * \see blockable_subject::block
+     * \see blockable_subject::unblock
+     */
+    bool set_block_state( bool block_state )
+    {
+        if( block_count && !block_state )
+        {
+            block_count = 0;
+            return true;
+        }
+        else if( !block_count && block_state )
+        {
+            block_count = 1;
+            return false;
+        }
+
+        return block_state; // No state change
+    }
+};
 
 /**
  * \brief Blocks temporary the notifications of a subject.
