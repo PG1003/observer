@@ -10,11 +10,11 @@ int main( int /* argc */, char * /* argv */[] )
     pg::subject<>              s;
 
     // Connect sy both to s1 and s2
-    owner.connect( s1, sy );
-    owner.connect( s2, sy );
+    owner.connect( s1, &sy, &pg::subject<>::notify );
+    owner.connect( s2, &sy, &pg::subject<>::notify );
 
     // Redirect notifications from sy to s
-    owner.connect( sy, s);
+    owner.connect( sy, &s, &pg::subject<>::notify );
 
     owner.connect( s, []{ std::cout << "Hello World!" << std::endl; } );
 
