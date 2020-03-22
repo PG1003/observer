@@ -50,7 +50,7 @@ $(EXAMPLEOBJECTS): $(EXAMPLESOURCES)
 benchmarks:$(OBJDIR) $(OUTDIR) $(BENCHMARKS)
 
 $(BENCHMARKS): $(BENCHMARKOBJECTS)
-	$(CXX) $(CXXFLAGS) -o $@ $(patsubst $(OUTDIR)%, $(OBJDIR)%.o, $@)
+	$(CXX) $(LDFLAGS) -o $@ $(patsubst $(OUTDIR)%, $(OBJDIR)%.o, $@)
 	
 $(BENCHMARKOBJECTS): $(BENCHMARKSOURCES)
 	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $(patsubst $(OBJDIR)%.o, $(BENCHMARKDIR)%.cpp, $@) -o $@
