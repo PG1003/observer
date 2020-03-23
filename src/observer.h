@@ -515,16 +515,13 @@ public:
      */
     void disconnect( const connection &c ) noexcept
     {
-        if( c.m_h )
+        // Disconnect only when its our connection.
+        auto it = m_observers.find( c.m_h );
+        if( it != m_observers.cend() )
         {
-            // Disconnect only when its our connection.
-            auto it = m_observers.find( c.m_h );
-            if( it != m_observers.cend() )
-            {
-                c.m_h->remove_from_subject();
-                m_observers.erase( it );
-                delete c.m_h;
-            }
+            c.m_h->remove_from_subject();
+            m_observers.erase( it );
+            delete c.m_h;
         }
     }
 };
