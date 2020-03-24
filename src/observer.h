@@ -273,10 +273,16 @@ public:
 /**
  * \brief Blocks temporary the notifications of a subject.
  *
- * \tparam S The type of the blocked subject.
+ * \tparam S The type of the blockable subject.
  *
  * This class use RAII. The class blocks notifications when it is constructed and unblocked at destruction,
  * for example when a subject_blocker instance leaves its scope.
+ *
+ * A subject_blocker expects that a blockable subject has the following two methods;
+ * - [discarded] block() [const]
+ * - [discarded] unblock() [const]
+ *
+ * \see pg::blockable_subject
  */
 template< typename S >
 class subject_blocker
@@ -311,6 +317,14 @@ public:
  * \brief Manages the subject <--> observer connection lifetime from the observer side.
  *
  * Connections that are made and thus owned by observer_owner are removed at destruction of observer_owner.
+ *
+ * When connecting an observer to a subject, the observer_owner expects a subject has the following methods;
+ * - [discarded] connect( pg::observer< T... > * ) [const]
+ * - [discarded] disconnect( [const] pg::observer< T... > * ) [const]
+ *
+ * \see pg::subject
+ * \see pg::blockable_subject
+ * \see pg::observer
  */
 class observer_owner
 {
@@ -513,7 +527,7 @@ public:
      *
      * \see observer_owner::connect
      */
-    void disconnect( const connection &c ) noexcept
+    void disconnect( connection c ) noexcept
     {
         // Disconnect only when its our connection.
         auto it = m_observers.find( c.m_h );
