@@ -4,17 +4,16 @@ An observer pattern that can ignore extra arguments like Qt's signals and slots.
 
 ## Features
 
-* Connected callables can accept _less_ parameters than the subject provides.
-* Manages lifetime of the connection between the subject and observer. 
-* Defining the subject's notification values by variadic template parameters.
+* Connected callables can accept _less_ parameters than the subject's interface provides.
+* Defining the observer's notification values by variadic template parameters.
 * Connect all kinds of callables to a subject; member functions, lambdas, functors, ```std::function``` and free functions.
-* Chaining subjects; a subject can notify other subjects.
-* Provides a mechanism to block temporarily all notifications from a specific subject.
-* [1 header file](https://github.com/PG1003/observer/blob/master/src/observer.h) that includes only headers from the standard template library.
+* Support for custum subjects via static polymorphism. 
+* Lifetime management of the connection between the subject and observer. 
+* [1 header file](https://github.com/PG1003/observer/blob/master/src/observer.h) that includes only 3 headers from the standard template library.
 
 ## Requirements
 
-* C++14 compliant compiller.
+* C++14 compliant compiller. 
 
 ## Examples
 
