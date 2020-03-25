@@ -124,8 +124,7 @@ struct member_observers
 struct member_observers_with_owner : private observer_owner, public member_observers
 {
     member_observers_with_owner( subject< int, char > &subject_int_char )
-            : observer_owner()
-            , member_observers( *this, subject_int_char )
+            : member_observers( *this, subject_int_char )
     {}
 };
 
