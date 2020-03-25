@@ -406,7 +406,7 @@ static void type_compatibility()
 {
     observer_owner owner;
     subject< std::string >         subject_string;
-//    subject< const std::string >   subject_const_string;
+    subject< const std::string >   subject_const_string;
     subject< const std::string & > subject_const_string_ref;
     subject< char * >              subject_p_char;
     subject< const char * >        subject_const_p_char;
@@ -437,8 +437,8 @@ static void type_compatibility()
     owner.connect( subject_string, str           );
     owner.connect( subject_string, const_str_ref );
 
-//    owner.connect( subject_const_string, str           );
-//    owner.connect( subject_const_string, const_str_ref );
+    owner.connect( subject_const_string, str           );
+    owner.connect( subject_const_string, const_str_ref );
 
     owner.connect( subject_const_string_ref, str           );
     owner.connect( subject_const_string_ref, const_str_ref );
@@ -461,14 +461,14 @@ static void type_compatibility()
     assert_true( int_const_string_ref == 5 );
     int_reset();
 
-//    subject_const_string.notify( "Foobar" );
-//    subject_const_string.notify( string_value );
-//    subject_const_string.notify( const_string_value );
-//    subject_const_string.notify( sz_char );
-//    subject_const_string.notify( const_p_char_value );
-//    assert_true( int_str == 5 );
-//    assert_true( int_const_string_ref == 5 );
-//    int_reset();
+    subject_const_string.notify( "Foobar" );
+    subject_const_string.notify( string_value );
+    subject_const_string.notify( const_string_value );
+    subject_const_string.notify( sz_char );
+    subject_const_string.notify( const_p_char_value );
+    assert_true( int_str == 5 );
+    assert_true( int_const_string_ref == 5 );
+    int_reset();
 
     subject_const_string_ref.notify( "Foobar" );
     subject_const_string_ref.notify( string_value );
