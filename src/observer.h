@@ -358,7 +358,7 @@ class observer_owner
 
     public:
         template< typename ...Ab >
-        owner_observer( observer_owner &owner, S &subject, Ab&&... args_base )
+        owner_observer( observer_owner &owner, S &subject, Ab&&... args_base ) noexcept
             : B( std::forward< Ab >( args_base )... )
             , m_owner( owner )
             , m_subject( subject )
@@ -391,7 +391,7 @@ class observer_owner
         F         m_function;
 
     protected:
-        member_function_observer( O * instance, F function )
+        member_function_observer( O * instance, F function ) noexcept
                 : m_instance( instance )
                 , m_function( function )
         {}
@@ -408,7 +408,7 @@ class observer_owner
         F m_function;
 
     protected:
-        function_observer( const F &function )
+        function_observer( const F &function ) noexcept
                 : m_function( function )
         {}
 
