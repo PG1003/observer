@@ -219,8 +219,7 @@ public:
      *
      * Notifications are not buffered when the subject is blocked.
      *
-     * \see blockable_subject::unblock
-     * \see blockable_subject::set_block_state
+     * \see blockable_subject::unblock blockable_subject::set_block_state
      */
     void block()
     {
@@ -232,8 +231,7 @@ public:
      *
      * This function can be called multiple times even when the subject is already unblocked.
      *
-     * \see blockable_subject::block
-     * \see blockable_subject::set_block_state
+     * \see blockable_subject::block blockable_subject::set_block_state
      */
     void unblock()
     {
@@ -248,13 +246,14 @@ public:
      *
      * \param block_state The new block state.
      *
+     * \return Returns the old block state.
+     *
      * When the block count is 0 when the block_state is true, the block count is set to 1.
      * In case the block count is larger than 0 and the block_state is false, the block count is set to 0.
      *
      * The block count won't change if block_state is true and the block count is 0 or the block_state is false and the block count is 0.
      *
-     * \see blockable_subject::block
-     * \see blockable_subject::unblock
+     * \see blockable_subject::block blockable_subject::unblock
      */
     bool set_block_state( bool block_state )
     {
@@ -281,7 +280,7 @@ public:
  * This class use RAII. The class blocks notifications when it is constructed and unblocked at destruction,
  * for example when a subject_blocker instance leaves its scope.
  *
- * A subject_blocker expects that a blockable subject has the following two methods;
+ * A subject_blocker expects a blockable subject that has the following two methods;
  * - [discarded] block() [const]
  * - [discarded] unblock() [const]
  *
@@ -325,9 +324,7 @@ public:
  * - [discarded] connect( pg::observer< T... > * ) [const]
  * - [discarded] disconnect( [const] pg::observer< T... > * ) [const]
  *
- * \see pg::subject
- * \see pg::blockable_subject
- * \see pg::observer
+ * \see pg::subject pg::blockable_subject pg::observer
  */
 class observer_owner
 {
@@ -492,6 +489,9 @@ public:
         return new observer_type( *this, s, instance, function );
     }
 
+    /**
+     * \overload connection connect( S & s, O * instance, R( O::* )( Ao... ) function )
+     */
     template< typename S, typename R, typename O, typename ...Ao >
     connection connect( S &s, O * instance, R ( O::* const function )( Ao... ) const ) noexcept
     {
@@ -532,7 +532,6 @@ public:
      */
     void disconnect( connection c ) noexcept
     {
-        // Disconnect only when its our connection.
         auto it = m_observers.find( c.m_h );
         if( it != m_observers.cend() )
         {
