@@ -237,7 +237,10 @@ public:
      */
     void unblock()
     {
-        --block_count;
+        if( block_count > 0 )
+        {
+            --block_count;
+        }
     }
 
     /**

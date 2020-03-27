@@ -396,10 +396,15 @@ static void block_subject()
     subject_void.notify();
     assert_true( val == 3 );
 
+    subject_void.unblock();
+
+    subject_void.notify();
+    assert_true( val == 4 );
+
     subject_void.set_block_state( true );
 
     subject_void.notify();
-    assert_true( val == 3 );
+    assert_true( val == 4 );
 }
 
 static void type_compatibility()
