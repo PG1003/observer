@@ -12,8 +12,8 @@ struct functor
 
 int main( int /* argc */, char * /* argv */[] )
 {
-    pg::observer_owner owner;
-    pg::subject<>      s;
+    pg::connection_owner owner;
+    pg::subject<>        s;
 
     const std::function< void() > function = []{ std::cout << "Hello PG1003!" << std::endl; };
 

@@ -1,7 +1,7 @@
 #include <observer.h>
 #include <iostream>
 
-struct bar : public pg::observer_owner
+struct bar : public pg::connection_owner
 {
     bar( pg::subject< std::string >& foo )
     {

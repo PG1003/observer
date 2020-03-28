@@ -3,7 +3,7 @@
 
 int main( int /* argc */, char * /* argv */[] )
 {
-    pg::observer_owner owner;
+    pg::connection_owner       owner;
     pg::subject<>              s1;
     pg::subject< const char* > s2;
     pg::subject<>              sy;
