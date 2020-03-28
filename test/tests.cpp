@@ -97,7 +97,7 @@ struct member_observers
     int int_ival      = -1;
     int void_val      = 0;
 
-    member_observers( observer_owner& owner, subject< int, char > &subject_int_char )
+    member_observers( connection_owner& owner, subject< int, char > &subject_int_char )
     {
         owner.connect( subject_int_char, this, &member_observers::int_char );
         owner.connect( subject_int_char, this, &member_observers::int_ );
@@ -121,7 +121,7 @@ struct member_observers
     }
 };
 
-struct member_observers_with_owner : private observer_owner, public member_observers
+struct member_observers_with_owner : private connection_owner, public member_observers
 {
     member_observers_with_owner( subject< int, char > &subject_int_char )
             : member_observers( *this, subject_int_char )
@@ -136,9 +136,9 @@ static void free_function_observer()
 {
     free_function_reset();
 
-    observer_owner owner;
-    subject< int > subject_int;
-    subject<>      subject_void;
+    connection_owner owner;
+    subject< int >   subject_int;
+    subject<>       subject_void;
 
     owner.connect( subject_int, free_function_int );
     owner.connect( subject_int, free_function_void );
@@ -154,9 +154,9 @@ static void free_function_observer()
 
 static void lambda_function_observer()
 {
-    observer_owner owner;
-    subject< int > subject_int;
-    subject<>      subject_void;
+    connection_owner owner;
+    subject< int >   subject_int;
+    subject<>        subject_void;
 
     int lambda_int_val  = -1;
     int lambda_void_val = 0;
@@ -175,9 +175,9 @@ static void lambda_function_observer()
 
 static void std_function_observer()
 {
-    observer_owner owner;
-    subject< int > subject_int;
-    subject<>      subject_void;
+    connection_owner owner;
+    subject< int >   subject_int;
+    subject<>        subject_void;
 
     int lambda_int_val  = -1;
     int lambda_void_val = 0;
@@ -199,8 +199,8 @@ static void std_function_observer()
 
 static void functor_observer()
 {
-    observer_owner owner;
-    subject< int > subject_int;
+    connection_owner owner;
+    subject< int >   subject_int;
 
     int int_val  = -1;
     int void_val = 0;
@@ -228,11 +228,11 @@ static void member_function_observer()
 
 static void subject_subject_observer()
 {
-    observer_owner       owner;
-    subject< int, char > subject_int_char1;
-    subject< int, char > subject_int_char2;
-    subject< int >       subject_int;
-    subject<>            subject_void;
+    connection_owner       owner;
+    subject< int, char >   subject_int_char1;
+    subject< int, char >   subject_int_char2;
+    subject< int >         subject_int;
+    subject<>              subject_void;
 
     int  int_char_1_ival = -1;
     char int_char_1_cval = '\0';
@@ -265,7 +265,7 @@ static void observer_owner_lifetime()
     int val = -1;
 
     {
-        observer_owner   owner;
+        connection_owner owner;
 
         owner.connect( subject_int_char, [ & ]( int i ){ val = i; } );
 
@@ -279,7 +279,7 @@ static void observer_owner_lifetime()
 
 static void subject_lifetime()
 {
-    observer_owner owner;
+    connection_owner owner;
 
     int val_1 = 0;
     int val_2 = 0;
@@ -301,15 +301,15 @@ static void subject_lifetime()
 
 static void observer_disconnect()
 {
-    observer_owner owner_1;
-    observer_owner owner_2;
-    subject<>      subject_void;
+    connection_owner owner_1;
+    connection_owner owner_2;
+    subject<>        subject_void;
 
     int val = 0;
 
-    observer_owner::connection connection_1;
+    connection_owner::connection connection_1;
     connection_1                            = owner_1.connect( subject_void, [ & ]{ ++val; } );
-    observer_owner::connection connection_2 = owner_2.connect( subject_void, [ & ]{ ++val; } );
+    connection_owner::connection connection_2 = owner_2.connect( subject_void, [ & ]{ ++val; } );
 
     owner_2.disconnect( connection_1 );
     owner_1.disconnect( connection_2 );
@@ -365,7 +365,7 @@ static void observer_notify_and_disconnect_order()
 
 static void block_subject()
 {
-    observer_owner      owner;
+    connection_owner    owner;
     blockable_subject<> subject_void;
 
     int val = 0;
@@ -409,7 +409,7 @@ static void block_subject()
 
 static void type_compatibility()
 {
-    observer_owner owner;
+    connection_owner               owner;
     subject< std::string >         subject_string;
     subject< const std::string >   subject_const_string;
     subject< const std::string & > subject_const_string_ref;

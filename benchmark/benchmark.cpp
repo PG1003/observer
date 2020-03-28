@@ -46,7 +46,7 @@ struct increase
 
 int main( int /* argc */, char * /* argv */[] )
 {
-    pg::observer_owner owner;
+    pg::connection_owner owner;
 
     std::function< void( int ) > increase_count_std_function = [&]( int value ){ count_value += value; };
     auto increase_count_lambda_function                      = [&]( int value ){ count_value += value; };
