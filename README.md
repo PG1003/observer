@@ -34,8 +34,8 @@ void hello_function()
 
 int main( int /* argc */, char * /* argv */[] )
 {
-    pg::observer_owner owner;
-    pg::subject<>      hello_subject;
+    pg::connection_owner owner;
+    pg::subject<>        hello_subject;
     
     owner.connect( hello_subject, hello_function );
     
@@ -65,7 +65,7 @@ This example shows three more features of the library:
 * Disconnecting a function.
 
 ``` c++
-struct b : public pg::observer_owner
+struct b : public pg::connection_owner
 {
     void print( const std::string &str, int i )
     {
@@ -75,7 +75,7 @@ struct b : public pg::observer_owner
 
 int main( int /* argc */, char * /* argv */[] )
 {
-    pg::observer_owner              owner;
+    pg::connection_owner            owner;
     pg::subject< std::string, int > foo;
     b                               bar;
 

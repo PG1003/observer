@@ -1,11 +1,12 @@
-# 1.5.0
+# 2.0.0
 
 Changes:
-- pg::observer_owner supports static polymorphism for subjects. A subject is required to have a connect and a disconnect function that accepts an observer interace pointer as parameter.
+- Renamed pg::observer_owner to pg::connection_owner and provided an alias for the old name to ensure backwards compatibility. The new name expresses better the functionality of the object. 
+- pg::connection_owner supports static polymorphism for subjects. A subject is required to have a connect and a disconnect function that accepts an observer interace pointer as parameter.
 - Added pg::blockable_subject. This subject type maintains a block count so that multiple resources can block its notifications.
 
 Breaking changes:
-- The overload pg::observer_owner::connect which connected one subject to another is removed. Use the connect overload for member functions instead. See tests or chain_subjects example.
+- The overload pg::connection_owner::connect which connected one subject to another is removed. Use the connect overload for member functions instead. See tests or chain_subjects example.
 - pg::subject is no longer blockable, use pg::blockable_subject instead.
 - pg::subject_blocker now requires subjects to provide a block and a unblock function, for example like pg::blockable_subject.
 - A connection is no longer automaticly invalidated. The usability of this feature didn't justify the extra complexity.  
