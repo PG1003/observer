@@ -98,8 +98,13 @@ struct invoke_helper< R ( C:: * )( A... ) const >
 template< typename ...A >
 class subject_base
 {
+    subject_base( const subject_base< A... > & ) = delete;
+    subject_base< A... >& operator=( const subject_base< A... > & ) = delete;
+
 protected:
     std::vector< observer< A... > * > m_observers;
+
+    subject_base() noexcept = default;
 
     ~subject_base() noexcept
     {
@@ -159,7 +164,12 @@ inline decltype( auto ) invoke( const F function, A... args )
 template< typename ...A >
 class subject : public detail::subject_base< A... >
 {
+    subject( const subject< A... > & ) = delete;
+    subject< A... >& operator=( const subject< A... > & ) = delete;
+
 public:
+    subject() noexcept = default;
+
     /**
      * \brief Notifies the observers observers connected to this subject.
      *
@@ -190,9 +200,14 @@ public:
 template< typename ...A >
 class blockable_subject : public detail::subject_base< A... >
 {
+    blockable_subject( const blockable_subject< A... > & ) = delete;
+    blockable_subject< A... >& operator=( const blockable_subject< A... > & ) = delete;
+
     int block_count = 0;
 
 public:
+    blockable_subject() noexcept = default;
+
     /**
      * \brief Notifies the observers observers connected to this subject when not blocked.
      *
@@ -300,10 +315,7 @@ public:
     subject_blocker( S & subject ) noexcept
             : m_subject( &subject )
     {
-        if( m_subject )
-        {
-            m_subject->block();
-        }
+        m_subject->block();
     }
 
     ~subject_blocker() noexcept
@@ -318,27 +330,27 @@ public:
 /**
  * \brief Manages the subject <--> observer connection lifetime from the observer side.
  *
- * Connections that are made and thus owned by observer_owner are removed at destruction of observer_owner.
+ * Connections that are made and thus owned by connection_owner are removed at destruction of connection_owner.
  *
- * When connecting an observer to a subject, the observer_owner expects a subject has the following methods;
+ * When connecting an observer to a subject, the connection_owner expects that a subject has the following methods;
  * - [discarded] connect( pg::observer< T... > * ) [const]
  * - [discarded] disconnect( [const] pg::observer< T... > * ) [const]
  *
  * \see pg::subject pg::blockable_subject pg::observer
  */
-class observer_owner
+class connection_owner
 {
-    class abstract_owner_observer
+    class abstract_bserver
     {
     public:
-        virtual ~abstract_owner_observer() noexcept = default;
+        virtual ~abstract_bserver() noexcept = default;
         virtual void remove_from_subject() noexcept = 0;
     };
 
     template< typename B, typename S, typename ...Ao >
-    class owner_observer final : public observer< Ao... >, public abstract_owner_observer, B
+    class owner_observer final : public observer< Ao... >, public abstract_bserver, B
     {
-        observer_owner   &m_owner;
+        connection_owner &m_owner;
         S                &m_subject;
 
         virtual void notify( Ao... args ) override
@@ -358,7 +370,7 @@ class observer_owner
 
     public:
         template< typename ...Ab >
-        owner_observer( observer_owner &owner, S &subject, Ab&&... args_base ) noexcept
+        owner_observer( connection_owner &owner, S &subject, Ab&&... args_base ) noexcept
             : B( std::forward< Ab >( args_base )... )
             , m_owner( owner )
             , m_subject( subject )
@@ -419,12 +431,12 @@ class observer_owner
         }
     };
 
-    observer_owner( const observer_owner & ) = delete;
-    observer_owner & operator=( const observer_owner & ) = delete;
+    connection_owner( const connection_owner & ) = delete;
+    connection_owner & operator=( const connection_owner & ) = delete;
 
-    std::set< abstract_owner_observer * > m_observers;
+    std::set< abstract_bserver * > m_observers;
 
-    void remove_observer( abstract_owner_observer * const o ) noexcept
+    void remove_observer( abstract_bserver * const o ) noexcept
     {
         if( m_observers.erase( o ) )
         {
@@ -432,7 +444,7 @@ class observer_owner
         }
     }
 
-    void add_observer( abstract_owner_observer * const o ) noexcept
+    void add_observer( abstract_bserver * const o ) noexcept
     {
         m_observers.insert( o );
     }
@@ -443,14 +455,14 @@ public:
      *
      * \note Reuse of this handle may lead to undefined behavior.
      *
-     * \see observer_owner::connect observer_owner::disconnect
+     * \see connection_owner::connect connection_owner::disconnect
      */
     class connection
     {
-        friend observer_owner;
-        abstract_owner_observer * m_h = nullptr;
+        friend connection_owner;
+        abstract_bserver * m_h = nullptr;
 
-        connection( abstract_owner_observer * h )
+        connection( abstract_bserver * h )
                 : m_h( h )
         {}
 
@@ -458,9 +470,9 @@ public:
         connection() noexcept = default;
     };
 
-    observer_owner() = default;
+    connection_owner() = default;
 
-    ~observer_owner() noexcept
+    ~connection_owner() noexcept
     {
         for( auto o : m_observers )
         {
@@ -476,11 +488,11 @@ public:
      * \param instance The instance of the object.
      * \param function The member function pointer that is called when the subject notifies
      *
-     * \return Returns an observer_owner::connection handle.
+     * \return Returns an connection_owner::connection handle.
      *
      * The number of parameter that \em function accepts can be less than the number of values that comes with the notification.
      *
-     * \note The lifetime of the instance must exceed the observer_owner's lifetime.
+     * \note The lifetime of the instance must exceed the connection_owner's lifetime.
      */
     template< typename S, typename R, typename O, typename ...Ao >
     connection connect( S &s, O * instance, R ( O::* const function )( Ao... ) ) noexcept
@@ -490,7 +502,7 @@ public:
     }
 
     /**
-     * \overload connection connect( S & s, O * instance, R( O::* )( Ao... ) function )
+     * \overload connect( S & s, O * instance, R( O::* )( Ao... ) function )
      */
     template< typename S, typename R, typename O, typename ...Ao >
     connection connect( S &s, O * instance, R ( O::* const function )( Ao... ) const ) noexcept
@@ -505,14 +517,14 @@ public:
      * \param s        The subject from which \em function will receive notifications.
      * \param function A callable such as a free function, lambda, std::function or a functor that is called when the subject notifies.
      *
-     * \return Returns a connection handle.
+     * \return Returns a connection_owner::connection handle.
      *
      * The number of parameter that \em function accepts can be less than the number of values that comes with the notification.
      *
-     * The \em function is copied and stored in the observer_owner.
+     * The \em function is copied and stored in the connection_owner.
      * This means that the callables must have a copy constructor.
      *
-     * \note When a callable has side effects than the lifetime of these side effects must exceed the observer_owner's lifetime.
+     * \note When a callable has side effects than the lifetime of these side effects must exceed the connection_owner's lifetime.
      */
     template< typename S, typename F >
     connection connect( S &s, F function ) noexcept
@@ -528,7 +540,7 @@ public:
      *
      * The observer will be deleted in case it is a lambda, std::function or a functor.
      *
-     * \see observer_owner::connect
+     * \see connection_owner::connect
      */
     void disconnect( connection c ) noexcept
     {
@@ -541,6 +553,14 @@ public:
         }
     }
 };
+
+/**
+ * \brief Defined for backwards compatibility.
+ *
+ * observer_owner was renamed to connection_owner.
+ * The name 'connection_owner' expresses better what the object does; owning the lifetime of the connections.
+ */
+using observer_owner = connection_owner;
 
 }
 
