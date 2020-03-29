@@ -12,15 +12,14 @@ struct functor
 
 int main( int /* argc */, char * /* argv */[] )
 {
-    pg::connection_owner owner;
-    pg::subject<>        s;
+    pg::subject<> s;
 
     const std::function< void() > function = []{ std::cout << "Hello PG1003!" << std::endl; };
 
     // NOTE: 'functor' and 'function' are passed by value.
     //       This means they are copied into the observer
-    owner.connect( s, functor() );
-    owner.connect( s, function );
+    auto connection_1 = pg::connect( s, functor() );
+    auto connection_2 = pg::connect( s, function );
 
     s.notify();
 

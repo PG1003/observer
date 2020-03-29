@@ -8,10 +8,9 @@ void hello_world()
 
 int main( int /* argc */, char * /* argv */[] )
 {
-    pg::connection_owner owner;
-    pg::subject<>        s;
+    pg::subject<> s;
 
-    owner.connect( s, hello_world );
+    auto connection = pg::connect( s, hello_world );
 
     s.notify();
 

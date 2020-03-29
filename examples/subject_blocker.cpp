@@ -3,10 +3,9 @@
 
 int main( int /* argc */, char * /* argv */[] )
 {
-    pg::connection_owner                 owner;
     pg::blockable_subject< const char* > s;
 
-    owner.connect( s, []( const char* const msg ){ std::cout << msg << std::endl; } );
+    auto connection = pg::connect( s, []( const char* const msg ){ std::cout << msg << std::endl; } );
 
     s.notify( "Hello World!" );
 

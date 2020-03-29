@@ -11,11 +11,10 @@ struct foo
 
 int main( int /* argc */, char * /* argv */[] )
 {
-    pg::connection_owner owner;
-    pg::subject<>        s;
-    foo                  f;
+    pg::subject<> s;
+    foo           f;
 
-    owner.connect( s, &f, &foo::bar );
+    auto connection = pg::connect( s, &f, &foo::bar );
 
     s.notify();
 
