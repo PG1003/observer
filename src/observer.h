@@ -31,6 +31,17 @@ namespace pg
 {
 
 /**
+ * \brief The base of all observers.
+ *
+ * This base class can be used to collect or own all kinds of observers in one collection.
+ */
+class apex_observer
+{
+public:
+    virtual ~apex_observer() noexcept = default;
+};
+
+/**
  * \brief Interface for observer objects.
  *
  * \tparam A Defines the types of the parameters for the observer's notify function.
@@ -38,11 +49,9 @@ namespace pg
  * \see subject
  */
 template< typename ...A >
-class observer
+class observer : public apex_observer
 {
 public:
-    virtual ~observer() noexcept = default;
-
     /**
      * \brief Called when the observer is disconnected from the subject.
      *
@@ -327,6 +336,62 @@ public:
     }
 };
 
+namespace detail
+{
+
+template< template< class, class, class... > class D, typename B, typename S >
+struct observer_type_factory : observer_type_factory< D, B, decltype( &S::connect ) >
+{};
+
+template< template< class, class, class... > class D, typename B, typename R, typename S, typename ...Ao >
+struct observer_type_factory< D, B, R ( S:: * )( observer< Ao... > * ) >
+{
+    using type = D< B, S, Ao... >;
+};
+
+template< template< class, class, class... > class D, typename B, typename R, typename S, typename ...Ao >
+struct observer_type_factory< D, B, R ( S:: * )( observer< Ao... > * ) const >
+{
+    using type = D< B, S, Ao... >;
+};
+
+template< typename O, typename F, typename ...Ao >
+class member_function_observer
+{
+    O * const m_instance;
+    F         m_function;
+
+protected:
+    member_function_observer( O * instance, F function ) noexcept
+            : m_instance( instance )
+            , m_function( function )
+    {}
+
+    void invoke( Ao&&... args, ... )
+    {
+        ( m_instance->*m_function )( std::forward< Ao >( args )... );
+    }
+};
+
+template< typename F >
+class function_observer
+{
+    F m_function;
+
+protected:
+    function_observer( const F &function ) noexcept
+            : m_function( function )
+    {}
+
+    template< typename ...As >
+    void invoke( As&&... args )
+    {
+        detail::invoke_helper< F >::invoke( m_function, std::forward< As >( args )... );
+    }
+};
+
+}
+
 /**
  * \brief Manages the subject <--> observer connection lifetime from the observer side.
  *
@@ -371,63 +436,12 @@ class connection_owner
     public:
         template< typename ...Ab >
         owner_observer( connection_owner &owner, S &subject, Ab&&... args_base ) noexcept
-            : B( std::forward< Ab >( args_base )... )
-            , m_owner( owner )
-            , m_subject( subject )
+                : B( std::forward< Ab >( args_base )... )
+                , m_owner( owner )
+                , m_subject( subject )
         {
             m_owner.add_observer( this );
             m_subject.connect( this );
-        }
-    };
-
-    template< typename B, typename S >
-    struct observer_type_factory : observer_type_factory< B, decltype( &S::connect ) >
-    {};
-
-    template< typename B, typename R, typename S, typename ...Ao >
-    struct observer_type_factory< B, R ( S:: * )( observer< Ao... > * ) >
-    {
-        using type = owner_observer< B, S, Ao... >;
-    };
-
-    template< typename B, typename R, typename S, typename ...Ao >
-    struct observer_type_factory< B, R ( S:: * )( observer< Ao... > * ) const >
-    {
-        using type = owner_observer< B, S, Ao... >;
-    };
-
-    template< typename O, typename F, typename ...Ao >
-    class member_function_observer
-    {
-        O * const m_instance;
-        F         m_function;
-
-    protected:
-        member_function_observer( O * instance, F function ) noexcept
-                : m_instance( instance )
-                , m_function( function )
-        {}
-
-        void invoke( Ao&&... args, ... )
-        {
-            ( m_instance->*m_function )( std::forward< Ao >( args )... );
-        }
-    };
-
-    template< typename F >
-    class function_observer
-    {
-        F m_function;
-
-    protected:
-        function_observer( const F &function ) noexcept
-                : m_function( function )
-        {}
-
-        template< typename ...As >
-        void invoke( As&&... args )
-        {
-            detail::invoke_helper< F >::invoke( m_function, std::forward< As >( args )... );
         }
     };
 
@@ -455,7 +469,7 @@ public:
      *
      * \note Reuse of this handle may lead to undefined behavior.
      *
-     * \see connection_owner::connect connection_owner::disconnect
+     * \see pg::connection_owner::connect pg::connection_owner::disconnect
      */
     class connection
     {
@@ -488,7 +502,7 @@ public:
      * \param instance The instance of the object.
      * \param function The member function pointer that is called when the subject notifies
      *
-     * \return Returns an connection_owner::connection handle.
+     * \return Returns a connection_owner::connection handle.
      *
      * The number of parameter that \em function accepts can be less than the number of values that comes with the notification.
      *
@@ -497,7 +511,7 @@ public:
     template< typename S, typename R, typename O, typename ...Ao >
     connection connect( S &s, O * instance, R ( O::* const function )( Ao... ) ) noexcept
     {
-        using observer_type = typename observer_type_factory< member_function_observer< O, R ( O::* )( Ao... ), Ao... >, S >::type;
+        using observer_type = typename detail::observer_type_factory< owner_observer, detail::member_function_observer< O, R ( O::* )( Ao... ), Ao... >, S >::type;
         return new observer_type( *this, s, instance, function );
     }
 
@@ -507,7 +521,7 @@ public:
     template< typename S, typename R, typename O, typename ...Ao >
     connection connect( S &s, O * instance, R ( O::* const function )( Ao... ) const ) noexcept
     {
-        using observer_type = typename observer_type_factory< member_function_observer< O, R ( O::* )( Ao... ) const, Ao... >, S >::type;
+        using observer_type = typename detail::observer_type_factory< owner_observer, detail::member_function_observer< O, R ( O::* )( Ao... ) const, Ao... >, S >::type;
         return new observer_type( *this, s, instance, function );
     }
 
@@ -529,7 +543,7 @@ public:
     template< typename S, typename F >
     connection connect( S &s, F function ) noexcept
     {
-        using observer_type = typename observer_type_factory< function_observer< F >, S >::type;
+        using observer_type = typename detail::observer_type_factory< owner_observer, detail::function_observer< F >, S >::type;
         return new observer_type( *this, s, function );
     }
 
@@ -540,7 +554,7 @@ public:
      *
      * The observer will be deleted in case it is a lambda, std::function or a functor.
      *
-     * \see connection_owner::connect
+     * \see pg::connection_owner::connect
      */
     void disconnect( connection c ) noexcept
     {
@@ -561,6 +575,158 @@ public:
  * The name 'connection_owner' expresses better what the object does; owning the lifetime of the connections.
  */
 using observer_owner = connection_owner;
+
+namespace detail
+{
+
+template< typename B, typename S, typename ...Ao >
+class scoped_observer final : public observer< Ao... >, B
+{
+    S * m_subject;
+
+    virtual void notify( Ao... args ) override
+    {
+        B::invoke( std::forward< Ao >( args )... );
+    }
+
+    virtual void disconnect() noexcept override
+    {
+        m_subject = nullptr;
+    }
+
+public:
+    template< typename ...Ab >
+    scoped_observer( S &subject, Ab&&... args_base ) noexcept
+            : B( std::forward< Ab >( args_base )... )
+            , m_subject( &subject )
+    {
+        m_subject->connect( this );
+    }
+
+    virtual ~scoped_observer()
+    {
+        if( m_subject )
+        {
+            m_subject->disconnect( this );
+        }
+    }
+};
+
+}
+
+/**
+ * \brief Owns a connection between subject <--> observer.
+ *
+ * A pg::scoped_connection is created by one of pg::connect functions.
+ * The lifetime of the connection owned by pg::scoped_connection and ends when a pg::scoped_connection goes out of scope or gets deleted.
+ *
+ * When assigning a new connection returned by pg::connect, the connection it currently holds will be deleted before taking ownership of the new one.
+ *
+ * \note The lifetime of a scoped_connection must exceed the connected (member) function's side-effects' lifetime at the observer side.
+ *
+ * \see pg::connect
+ */
+class scoped_connection
+{
+    template< typename S, typename R, typename O, typename ...Ao >
+    friend scoped_connection connect( S &s, O * instance, R ( O::* const function )( Ao... ) ) noexcept;
+
+    template< typename S, typename R, typename O, typename ...Ao >
+    friend scoped_connection connect( S &s, O * instance, R ( O::* const function )( Ao... ) const ) noexcept;
+
+    template< typename S, typename F >
+    friend scoped_connection connect( S &s, F function ) noexcept;
+
+    apex_observer* m_observer = nullptr;
+
+    scoped_connection( apex_observer * o )
+            : m_observer( o )
+    {}
+
+public:
+    scoped_connection() = default;
+
+    scoped_connection( scoped_connection&& other )
+    {
+        delete m_observer;
+        m_observer       = other.m_observer;
+        other.m_observer = nullptr;
+    }
+
+    scoped_connection& operator=( scoped_connection&& other )
+    {
+        delete m_observer;
+        m_observer       = other.m_observer;
+        other.m_observer = nullptr;
+        return *this;
+    }
+
+    ~scoped_connection()
+    {
+        delete m_observer;
+    }
+
+    /**
+     * \brief Ends the lifetime its connection.
+     */
+    void reset()
+    {
+        delete m_observer;
+        m_observer = nullptr;
+    }
+};
+
+/**
+ * \brief Connects a member function of an object to a subject.
+ *
+ * \param s        The subject from which the object's member function will receive notifications.
+ * \param instance The instance of the object.
+ * \param function The member function pointer that is called when the subject notifies
+ *
+ * \return Returns a pg::scoped_connection.
+ *
+ * The number of parameter that \em function accepts can be less than the number of values that comes with the notification.
+ *
+ * \note The lifetime of the instance must exceed the scoped_connection's lifetime.
+ */
+template< typename S, typename R, typename O, typename ...Ao >
+scoped_connection connect( S &s, O * instance, R ( O::* const function )( Ao... ) ) noexcept
+{
+    using observer_type = typename detail::observer_type_factory< detail::scoped_observer, detail::member_function_observer< O, R ( O::* )( Ao... ), Ao... >, S >::type;
+    return new observer_type( s, instance, function );
+}
+
+/**
+ * \overload connect( S & s, O * instance, R( O::* )( Ao... ) function )
+ */
+template< typename S, typename R, typename O, typename ...Ao >
+scoped_connection connect( S &s, O * instance, R ( O::* const function )( Ao... ) const ) noexcept
+{
+    using observer_type = typename detail::observer_type_factory< detail::scoped_observer, detail::member_function_observer< O, R ( O::* )( Ao... ) const, Ao... >, S >::type;
+    return new observer_type( s, instance, function );
+}
+
+/**
+ * \brief Connects a callable to a subject.
+ *
+ * \param s        The subject from which \em function will receive notifications.
+ * \param function A callable such as a free function, lambda, std::function or a functor that is called when the subject notifies.
+ *
+ * \return Returns a pg::scoped_connection.
+ *
+ * The number of parameter that \em function accepts can be less than the number of values that comes with the notification.
+ *
+ * The \em function is copied and stored in the connection_owner.
+ * This means that the callables must have a copy constructor.
+ *
+ * \note When a callable has side effects than the lifetime of these side effects must exceed the scoped_connection's lifetime.
+ */
+template< typename S, typename F >
+scoped_connection connect( S &s, F function ) noexcept
+{
+    using observer_type = typename detail::observer_type_factory< detail::scoped_observer, detail::function_observer< F >, S >::type;
+    return new observer_type( s, function );
+}
 
 }
 

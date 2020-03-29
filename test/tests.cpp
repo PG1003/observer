@@ -97,13 +97,6 @@ struct member_observers
     int int_ival      = -1;
     int void_val      = 0;
 
-    member_observers( connection_owner& owner, subject< int, char > &subject_int_char )
-    {
-        owner.connect( subject_int_char, this, &member_observers::int_char );
-        owner.connect( subject_int_char, this, &member_observers::int_ );
-        owner.connect( subject_int_char, this, &member_observers::void_ );
-    }
-
     void int_char( int i, char c )
     {
         int_char_ival = i;
@@ -124,8 +117,11 @@ struct member_observers
 struct member_observers_with_owner : private connection_owner, public member_observers
 {
     member_observers_with_owner( subject< int, char > &subject_int_char )
-            : member_observers( *this, subject_int_char )
-    {}
+    {
+        connect( subject_int_char, static_cast< member_observers * >( this ), &member_observers::int_char );
+        connect( subject_int_char, static_cast< member_observers * >( this ), &member_observers::int_ );
+        connect( subject_int_char, static_cast< member_observers * >( this ), &member_observers::void_ );
+    }
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -136,48 +132,84 @@ static void free_function_observer()
 {
     free_function_reset();
 
-    connection_owner owner;
-    subject< int >   subject_int;
-    subject<>       subject_void;
+    subject< int > subject_int;
+    subject<>      subject_void;
 
-    owner.connect( subject_int, free_function_int );
-    owner.connect( subject_int, free_function_void );
-    owner.connect( subject_void, free_function_void );
+    {
+        connection_owner owner;
 
-    subject_int.notify( 42 );
-    assert_true( free_function_int_val == 42 );
-    assert_true( free_function_void_val == 1 );
+        owner.connect( subject_int, free_function_int );
+        owner.connect( subject_int, free_function_void );
+        owner.connect( subject_void, free_function_void );
 
-    subject_void.notify();
-    assert_true( free_function_void_val == 2 );
+        subject_int.notify( 42 );
+        assert_true( free_function_int_val == 42 );
+        assert_true( free_function_void_val == 1 );
+
+        subject_void.notify();
+        assert_true( free_function_void_val == 2 );
+    }
+
+    free_function_reset();
+
+    {
+        auto c1 = connect( subject_int, free_function_int );
+        auto c2 = connect( subject_int, free_function_void );
+        auto c3 = connect( subject_void, free_function_void );
+
+        subject_int.notify( 42 );
+        assert_true( free_function_int_val == 42 );
+        assert_true( free_function_void_val == 1 );
+
+        subject_void.notify();
+        assert_true( free_function_void_val == 2 );
+    }
 }
 
 static void lambda_function_observer()
 {
-    connection_owner owner;
-    subject< int >   subject_int;
-    subject<>        subject_void;
+    subject< int > subject_int;
+    subject<>      subject_void;
 
     int lambda_int_val  = -1;
     int lambda_void_val = 0;
 
-    owner.connect( subject_int, [ & ]( int i ){ lambda_int_val = i; } );
-    owner.connect( subject_int, [ & ]{ ++lambda_void_val; } );
-    owner.connect( subject_void, [ & ]{ ++lambda_void_val; } );
+    {
+        connection_owner owner;
 
-    subject_int.notify( 42 );
-    assert_true( lambda_int_val == 42 );
-    assert_true( lambda_void_val == 1 );
+        owner.connect( subject_int, [ & ]( int i ){ lambda_int_val = i; } );
+        owner.connect( subject_int, [ & ]{ ++lambda_void_val; } );
+        owner.connect( subject_void, [ & ]{ ++lambda_void_val; } );
 
-    subject_void.notify();
-    assert_true( lambda_void_val == 2 );
+        subject_int.notify( 42 );
+        assert_true( lambda_int_val == 42 );
+        assert_true( lambda_void_val == 1 );
+
+        subject_void.notify();
+        assert_true( lambda_void_val == 2 );
+    }
+
+    lambda_int_val  = -1;
+    lambda_void_val = 0;
+
+    {
+        auto c1 = connect( subject_int, [ & ]( int i ){ lambda_int_val = i; } );
+        auto c2 = connect( subject_int, [ & ]{ ++lambda_void_val; } );
+        auto c3 = connect( subject_void, [ & ]{ ++lambda_void_val; } );
+
+        subject_int.notify( 42 );
+        assert_true( lambda_int_val == 42 );
+        assert_true( lambda_void_val == 1 );
+
+        subject_void.notify();
+        assert_true( lambda_void_val == 2 );
+    }
 }
 
 static void std_function_observer()
 {
-    connection_owner owner;
-    subject< int >   subject_int;
-    subject<>        subject_void;
+    subject< int > subject_int;
+    subject<>      subject_void;
 
     int lambda_int_val  = -1;
     int lambda_void_val = 0;
@@ -185,54 +217,105 @@ static void std_function_observer()
     std::function< void( int ) > std_function_int  = [ & ]( int i ){ lambda_int_val = i; };
     std::function< void() >      std_function_void = [ & ]{ ++lambda_void_val; };
 
-    owner.connect( subject_int, std_function_int );
-    owner.connect( subject_int, std_function_void );
-    owner.connect( subject_void, std_function_void );
+    {
+        connection_owner owner;
 
-    subject_int.notify( 1337 );
-    assert_true( lambda_int_val == 1337 );
-    assert_true( lambda_void_val == 1 );
+        owner.connect( subject_int, std_function_int );
+        owner.connect( subject_int, std_function_void );
+        owner.connect( subject_void, std_function_void );
 
-    subject_void.notify();
-    assert_true( lambda_void_val == 2 );
+        subject_int.notify( 1337 );
+        assert_true( lambda_int_val == 1337 );
+        assert_true( lambda_void_val == 1 );
+
+        subject_void.notify();
+        assert_true( lambda_void_val == 2 );
+    }
+
+    lambda_int_val  = -1;
+    lambda_void_val = 0;
+
+    {
+        auto c1 = connect( subject_int, std_function_int );
+        auto c2 = connect( subject_int, std_function_void );
+        auto c3 = connect( subject_void, std_function_void );
+
+        subject_int.notify( 1337 );
+        assert_true( lambda_int_val == 1337 );
+        assert_true( lambda_void_val == 1 );
+
+        subject_void.notify();
+        assert_true( lambda_void_val == 2 );
+    }
 }
 
 static void functor_observer()
 {
-    connection_owner owner;
-    subject< int >   subject_int;
+    subject< int > subject_int;
 
     int int_val  = -1;
     int void_val = 0;
 
-    owner.connect( subject_int, functor_int( int_val ) );
-    owner.connect( subject_int, functor_void( void_val ) );
+    {
+        connection_owner owner;
 
-    subject_int.notify( 1003 );
-    assert_true( int_val == 1003 );
-    assert_true( void_val == 1 );
+        owner.connect( subject_int, functor_int( int_val ) );
+        owner.connect( subject_int, functor_void( void_val ) );
+
+        subject_int.notify( 1003 );
+        assert_true( int_val == 1003 );
+        assert_true( void_val == 1 );
+    }
+
+    int_val  = -1;
+    void_val = 0;
+
+    {
+        auto c1 = connect( subject_int, functor_int( int_val ) );
+        auto c2 = connect( subject_int, functor_void( void_val ) );
+
+        subject_int.notify( 1003 );
+        assert_true( int_val == 1003 );
+        assert_true( void_val == 1 );
+    }
 }
 
 static void member_function_observer()
 {
     subject< int, char >        subject_int_char;
-    member_observers_with_owner member_observers_with_owner_( subject_int_char );
 
-    subject_int_char.notify( 1337, 'Q' );
-    assert_true( member_observers_with_owner_.int_char_ival == 1337 );
-    assert_true( member_observers_with_owner_.int_char_cval == 'Q' );
-    assert_true( member_observers_with_owner_.int_ival == 1337 );
-    assert_true( member_observers_with_owner_.void_val == 1 );
+    {
+        member_observers_with_owner member_observers_with_owner_( subject_int_char );
+
+        subject_int_char.notify( 1337, 'Q' );
+        assert_true( member_observers_with_owner_.int_char_ival == 1337 );
+        assert_true( member_observers_with_owner_.int_char_cval == 'Q' );
+        assert_true( member_observers_with_owner_.int_ival == 1337 );
+        assert_true( member_observers_with_owner_.void_val == 1 );
+    }
+
+    {
+        member_observers member_observers_;
+
+        auto c1 = connect( subject_int_char, &member_observers_, &member_observers_with_owner::int_char );
+        auto c2 = connect( subject_int_char, &member_observers_, &member_observers_with_owner::int_ );
+        auto c3 = connect( subject_int_char, &member_observers_, &member_observers_with_owner::void_ );
+
+        subject_int_char.notify( 1337, 'Q' );
+        assert_true( member_observers_.int_char_ival == 1337 );
+        assert_true( member_observers_.int_char_cval == 'Q' );
+        assert_true( member_observers_.int_ival == 1337 );
+        assert_true( member_observers_.void_val == 1 );
+    }
 }
 
 
 static void subject_subject_observer()
 {
-    connection_owner       owner;
-    subject< int, char >   subject_int_char1;
-    subject< int, char >   subject_int_char2;
-    subject< int >         subject_int;
-    subject<>              subject_void;
+    subject< int, char > subject_int_char1;
+    subject< int, char > subject_int_char2;
+    subject< int >       subject_int;
+    subject<>            subject_void;
 
     int  int_char_1_ival = -1;
     char int_char_1_cval = '\0';
@@ -241,21 +324,51 @@ static void subject_subject_observer()
     int  int_val         = -1;
     int  void_val        = 0;
 
-    owner.connect( subject_int_char1, [ & ]( int i, char c ){ int_char_1_ival = i; int_char_1_cval = c; } );
-    owner.connect( subject_int_char1, &subject_int_char2, &subject< int, char >::notify );
-    owner.connect( subject_int_char2, [ & ]( int i, char c ){ int_char_2_ival = i; int_char_2_cval = c; } );
-    owner.connect( subject_int_char2, &subject_int, &subject< int >::notify );
-    owner.connect( subject_int, [ & ]( int i ){ int_val = i; } );
-    owner.connect( subject_int, &subject_void, &subject<>::notify );
-    owner.connect( subject_void, [ & ]{ ++void_val; } );
+    {
+        connection_owner owner;
 
-    subject_int_char1.notify( 33, 'R' );
-    assert_true( int_char_1_ival == 33 );
-    assert_true( int_char_1_cval == 'R' );
-    assert_true( int_char_2_ival == 33 );
-    assert_true( int_char_2_cval == 'R' );
-    assert_true( int_val == 33 );
-    assert_true( void_val == 1 );
+        owner.connect( subject_int_char1, [ & ]( int i, char c ){ int_char_1_ival = i; int_char_1_cval = c; } );
+        owner.connect( subject_int_char1, &subject_int_char2, &subject< int, char >::notify );
+        owner.connect( subject_int_char2, [ & ]( int i, char c ){ int_char_2_ival = i; int_char_2_cval = c; } );
+        owner.connect( subject_int_char2, &subject_int, &subject< int >::notify );
+        owner.connect( subject_int, [ & ]( int i ){ int_val = i; } );
+        owner.connect( subject_int, &subject_void, &subject<>::notify );
+        owner.connect( subject_void, [ & ]{ ++void_val; } );
+
+        subject_int_char1.notify( 33, 'R' );
+        assert_true( int_char_1_ival == 33 );
+        assert_true( int_char_1_cval == 'R' );
+        assert_true( int_char_2_ival == 33 );
+        assert_true( int_char_2_cval == 'R' );
+        assert_true( int_val == 33 );
+        assert_true( void_val == 1 );
+    }
+
+    int_char_1_ival = -1;
+    int_char_1_cval = '\0';
+    int_char_2_ival = -1;
+    int_char_2_cval = '\0';
+    int_val         = -1;
+    void_val        = 0;
+
+    {
+        auto c1 = connect( subject_int_char1, [ & ]( int i, char c ){ int_char_1_ival = i; int_char_1_cval = c; } );
+        auto c2 = connect( subject_int_char1, &subject_int_char2, &subject< int, char >::notify );
+        auto c3 = connect( subject_int_char2, [ & ]( int i, char c ){ int_char_2_ival = i; int_char_2_cval = c; } );
+        auto c4 = connect( subject_int_char2, &subject_int, &subject< int >::notify );
+        auto c5 = connect( subject_int, [ & ]( int i ){ int_val = i; } );
+        auto c6 = connect( subject_int, &subject_void, &subject<>::notify );
+        auto c7 = connect( subject_void, [ & ]{ ++void_val; } );
+
+        subject_int_char1.notify( 33, 'R' );
+        assert_true( int_char_1_ival == 33 );
+        assert_true( int_char_1_cval == 'R' );
+        assert_true( int_char_2_ival == 33 );
+        assert_true( int_char_2_cval == 'R' );
+        assert_true( int_val == 33 );
+        assert_true( void_val == 1 );
+    }
+
 }
 
 static void observer_owner_lifetime()
@@ -275,28 +388,63 @@ static void observer_owner_lifetime()
 
     subject_int_char.notify( 1702, 'K' );
     assert_true( val == 1701 );
+
+    val = -1;
+
+    {
+        auto c = connect( subject_int_char, [ & ]( int i ){ val = i; } );
+
+        subject_int_char.notify( 1701, 'J' );
+        assert_true( val == 1701 );
+    }
+
+    subject_int_char.notify( 1702, 'K' );
+    assert_true( val == 1701 );
 }
 
 static void subject_lifetime()
 {
-    connection_owner owner;
-
     int val_1 = 0;
     int val_2 = 0;
 
     {
+        connection_owner owner;
+
+        {
+            subject<> subject_void;
+            owner.connect( subject_void, [ & ]{ ++val_1; } );
+
+            subject_void.notify();
+        }
+
         subject<> subject_void;
-        owner.connect( subject_void, [ & ]{ ++val_1; } );
+        owner.connect( subject_void, [ & ]{ ++val_2; } );
 
         subject_void.notify();
+        assert_true( val_1 == 1 );
+        assert_true( val_2 == 1 );
     }
 
-    subject<> subject_void;
-    owner.connect( subject_void, [ & ]{ ++val_2; } );
+    val_1 = 0;
+    val_2 = 0;
 
-    subject_void.notify();
-    assert_true( val_1 == 1 );
-    assert_true( val_2 == 1 );
+    {
+        scoped_connection c1;
+
+        {
+            subject<> subject_void;
+            c1 = connect( subject_void, [ & ]{ ++val_1; } );
+
+            subject_void.notify();
+        }
+
+        subject<> subject_void;
+        auto c2 = connect( subject_void, [ & ]{ ++val_2; } );
+
+        subject_void.notify();
+        assert_true( val_1 == 1 );
+        assert_true( val_2 == 1 );
+    }
 }
 
 static void observer_disconnect()
@@ -308,7 +456,7 @@ static void observer_disconnect()
     int val = 0;
 
     connection_owner::connection connection_1;
-    connection_1                            = owner_1.connect( subject_void, [ & ]{ ++val; } );
+    connection_1                              = owner_1.connect( subject_void, [ & ]{ ++val; } );
     connection_owner::connection connection_2 = owner_2.connect( subject_void, [ & ]{ ++val; } );
 
     owner_2.disconnect( connection_1 );
@@ -498,7 +646,6 @@ static void type_compatibility()
     assert_true( int_const_string_ref == 3 );
     assert_true( int_const_p_char == 3 );
 }
-
 
 static void invoke_function()
 {
