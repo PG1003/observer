@@ -22,7 +22,6 @@
 
 #pragma once
 
-#include <set>
 #include <vector>
 #include <algorithm>
 
@@ -405,15 +404,15 @@ protected:
  */
 class connection_owner
 {
-    class abstract_bserver
+    class abstract_observer
     {
     public:
-        virtual ~abstract_bserver() noexcept = default;
+        virtual ~abstract_observer() noexcept = default;
         virtual void remove_from_subject() noexcept = 0;
     };
 
     template< typename B, typename S, typename ...Ao >
-    class owner_observer final : public observer< Ao... >, public abstract_bserver, B
+    class owner_observer final : public observer< Ao... >, public abstract_observer, B
     {
         connection_owner &m_owner;
         S                &m_subject;
@@ -448,19 +447,31 @@ class connection_owner
     connection_owner( const connection_owner & ) = delete;
     connection_owner & operator=( const connection_owner & ) = delete;
 
-    std::set< abstract_bserver * > m_observers;
+    std::vector< abstract_observer * > m_observers;
 
-    void remove_observer( abstract_bserver * const o ) noexcept
+    auto find_observer( const abstract_observer * const o )
     {
-        if( m_observers.erase( o ) )
+        auto it_find = std::find_if( m_observers.crbegin(), m_observers.crend(), [o]( const abstract_observer * const other )
         {
+            return other == o;
+        } );
+
+        return it_find == m_observers.crend() ? m_observers.cend() : ( ++it_find ).base();
+    }
+
+    void remove_observer( abstract_observer * const o ) noexcept
+    {
+        auto it_find = find_observer( o );
+        if( it_find != m_observers.cend() )
+        {
+            m_observers.erase( it_find );
             delete o;
         }
     }
 
-    void add_observer( abstract_bserver * const o ) noexcept
+    void add_observer( abstract_observer * const o ) noexcept
     {
-        m_observers.insert( o );
+        m_observers.push_back( o );
     }
 
 public:
@@ -474,9 +485,9 @@ public:
     class connection
     {
         friend connection_owner;
-        abstract_bserver * m_h = nullptr;
+        abstract_observer * m_h = nullptr;
 
-        connection( abstract_bserver * h )
+        connection( abstract_observer * h )
                 : m_h( h )
         {}
 
@@ -488,10 +499,10 @@ public:
 
     ~connection_owner() noexcept
     {
-        for( auto o : m_observers )
+        for( auto it = m_observers.crbegin() ; it != m_observers.crend() ; ++it )
         {
-            o->remove_from_subject();
-            delete o;
+            ( *it )->remove_from_subject();
+            delete *it;
         }
     }
 
@@ -558,11 +569,11 @@ public:
      */
     void disconnect( connection c ) noexcept
     {
-        auto it = m_observers.find( c.m_h );
-        if( it != m_observers.cend() )
+        auto it_find = find_observer( c.m_h );
+        if( it_find != m_observers.cend() )
         {
             c.m_h->remove_from_subject();
-            m_observers.erase( it );
+            m_observers.erase( it_find );
             delete c.m_h;
         }
     }

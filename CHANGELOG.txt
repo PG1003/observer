@@ -1,6 +1,10 @@
 # 2.0.0
 
 Changes:
+- pg::connection_owner now uses a vector instead of a set to store connections.
+  A vector is faster more memory efficient than a set when used as a storage.
+  Also this makes possible to make the order of disconnecting observers from 
+  the subjects the reverse of they were connected.
 - Added pg::connect functions which return a pg::scoped_connection. These can
   be used in case a connection_owner is a overkill, for example when you need
   to connect only one subject.

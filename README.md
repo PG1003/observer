@@ -9,7 +9,7 @@ An observer pattern that can ignore extra arguments like Qt's signals and slots.
 * Connect all kinds of callables to a subject; member functions, lambdas, functors, ```std::function``` and free functions.
 * Support for custum subjects via static polymorphism. 
 * Lifetime management of the connection between the subject and observer. 
-* [1 header file](https://github.com/PG1003/observer/blob/master/src/observer.h) that includes only 3 headers from the standard template library.
+* [1 header file](https://github.com/PG1003/observer/blob/master/src/observer.h) that includes only 2 headers from the standard template library.
 
 ## Requirements
 
