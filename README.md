@@ -30,6 +30,102 @@ An observer pattern that can ignore extra arguments like Qt's signals and slots.
   
   When you really need these features out-of-the-box then you should try [boost signals](https://www.boost.org/doc/libs/1_72_0/doc/html/signals2.html).
 
+## Examples
+
+In the [examples folder](https://github.com/PG1003/observer/blob/master/examples) you will find example programs that show the features and usage of this library.
+You can also take a peek in [tests.cpp](https://github.com/PG1003/observer/blob/master/test/tests.cpp).
+
+The following examples are provided to get the impression about the usage of this observer library.
+
+### Connecting a lambda
+
+``` c++
+int main( int /* argc */, char * /* argv */[] )
+{
+    // 1 Define a subject that notifies without parameters.
+    pg::subject<> hello_subject;
+    
+    // 2 Connect a lambda to the subject.
+    //   Assign the connection to a variable to keep the connection alive.
+    //   The connection will be automatically removed when the variable goes out of scope.
+    auto connection = pg::connect( hello_subject, []{ std::cout << "Hello World!" << std::endl; } );
+    
+    // 3 Notify the observers.
+    //   This will call the lambda that was connected to this subject.
+    //   In this case the subject has one function connected to it.
+    hello_subject.notify();
+    
+    return 0;
+}
+```
+The output is:
+>Hello World!
+
+### Connecting a function that ignores extra parameters from subject
+
+```c++
+// 1 A free function that accepts one string parameter.
+void hello( const std::string & str )
+{
+    std::cout << "Hello " << str << std::endl;
+}
+    
+int main( int /* argc */, char * /* argv */[] )
+{
+    // 2 Define a subject that passes two values; a string and an integer.
+    pg::subject< const char *, int > world_subject;
+    
+    // 4 Connect the hello function to the subject.
+    //   hello takes the first string value from the subject and ignors the second integer.
+    //   Assign the connection to a variable to keep the connection alive.
+    auto connection = pg::connect( world_subject, hello );
+    
+    // 5 Notify the observers.
+    //   This will call the hello function that was connected to this subject.
+    world_subject.notify( "World!", 42 );
+    
+    return 0;
+}
+```
+The output is:
+>Hello World!
+
+### Connecting a member function
+
+```c++
+int main( int /* argc */, char * /* argv */[] )
+{
+    // 1 Define a subject that passes a string to its observers.
+    subject< const std::string & > s;
+    
+    // 2 A vector to store the values we receive from our subject.
+    std::vector< std::string > v;
+
+    // 3 Create an alias for the overloaded member function pointer that we want to connect
+    using overload = void( std::vector< std::string >::* )( const std::string & );
+    
+    // 4 Connect the push_back fuction of the vector to our subject.
+    //   We need to cast member function pointer to select the required overload.
+    //   Assign the connection to a variable to keep the connection alive.
+    auto connection = pg::connect( s, &v, static_cast< overload >( &std::vector< std::string >::push_back ) );
+
+    // 5 Notify the observers.
+    s.notify( "Hello" );
+    s.notify( "World!" );
+
+    // 6 Print the contents of the vector.
+    for( auto& str : v )
+    {
+        std::cout << str << std::endl;
+    }
+    
+    return 0
+}
+```
+The output is:
+>Hello  
+>World!
+
 ## Documentation
 
 ### Observer
@@ -73,37 +169,47 @@ pg::subject<>                     // A subject without prameters, accepts pg::ob
 
 #### Custom subjects
 
-To create custom subjects you need to define the following two member functions to connect observers and facilitate lifetime management:
+You can create custom subjects for applications that need tight integration, multiprocessing, low overhead, etc.  
+
+To create custom subjects you need to define the following two public member functions to connect observers and facilitate lifetime management:
 * ```[discarded] connect( pg::observer< T... > * ) [const]```
 * ```[discarded] disconnect( [const] pg::observer< T... > * ) [const]```
 
-Also you must call for each observer the ```pg::observer< T... >::disconnect``` function before removing it from object, for example in the destructor.
+Also you must call for each observer the ```pg::observer< T... >::disconnect``` function before removing it from the object, for example in the destructor.
+
+The example below is a lightweight subject that handles only one observer.
+Note that there is _no_ notify function.
+The notify function is not a part of the static interface that defines a subject.
+So you can pick any name for the notification function that calls the observer's notify like ```emit``` or build your own method to notify the observer.  
 
 ```c++
 class my_subject
 {
-    std::vector< pg::observer< my_data > * > m_observers;
+    pg::observer< my_data > * m_observer = nullptr;
     
 public:    
     ~subject_base() noexcept
     {
-        for( o : m_observers )
+        if( m_observer )
         {
-            o->disconnect();
+            m_observer->disconnect();
         }
     }
 
     void connect( pg::observer< my_data > * const o ) noexcept
     {
-        m_observers.push_back( o );
+        if( m_observer )
+        {
+            m_observer->disconnect();
+        }
+        m_observer = o;
     }
 
     void disconnect( pg::const observer< my_data > * const o ) noexcept
     {
-        auto it_find = std::find( m_observers.cbegin(), m_observers.cend(), o );
-        if( it_find != m_observers.cend() )
+        if( o == m_observer )
         {
-            m_observers.erase( ( it_find ) );
+            m_observer = nullptr;
         }
     }
 };
@@ -122,7 +228,7 @@ There are two methods to manage the lifetime of connections between subjects and
 #### Scoped connections
 
 A scoped connection is a lightweight object of the ```pg::scoped_connection``` type which owns a connection.
-The lifetime of the connection ends when the lifetime of the subject or when the scoped connection object ends.
+The lifetime of the connection ends when the lifetime of the subject ends or when the scoped connection object goes out of scope.
 
 Scoped connections are returned by the ```pg::connect``` functions when connecting a member function or a callable to a subject. 
 These connections can be used at places where a limited number of connections are maintained.
@@ -143,11 +249,12 @@ s.notify( 1337 );   // Prints nothing, connection went out of scope
 #### Connection owner
 
 A connection owner is usefull for places where a lot of connections need to be managed.
-You can add a connection owner via composition by adding a ```pg::connection_owner``` member or by deriving from it.
-The lifetime of the connections owned by the connection owner end when the lifetime of the subject or when the connection owner object itself ends.
+You can add a connection owner via composition by adding a ```pg::connection_owner``` member or give a object connection owner traits by deriving from it.
+The lifetime of a connection is bound to the connection owner's lifetime.
+Connections are automatically removed from the connection owner when the subject goes out of scope or gets deleted. 
 
 A connection owner object owns only connections that are created with one of its ```pg::connection_owner::connect``` functions.
-Connection owners doe not share connections.
+Connection owners do not share connections.
 
 ```c++
 pg::subject< int > s;
@@ -162,100 +269,15 @@ pg::subject< int > s;
 
 s.notify( 1337 );   // Prints nothing, observer owner went out of scope
 ```
-
-### Examples
-
-In the [examples folder](https://github.com/PG1003/observer/blob/master/examples) you will find example programs that show the features and usage of this library.
-You can also take a peek in [tests.cpp](https://github.com/PG1003/observer/blob/master/test/tests.cpp).
-
-The next two examples shown here are a short introduction of this library.
-
-### Example 1
-
-This example shows the basic usage of the library.
-
-``` c++
-void hello_function()
-{
-    std::cout << "Hello World!" << std::endl;
-}
-
-int main( int /* argc */, char * /* argv */[] )
-{
-    pg::subject<> hello_subject;
-    
-    auto connection = pg::connect( hello_subject, hello_function );
-    
-    hello_subject.notify();
-    
-    return 0;
-}
-```
-The output is:
->Hello World!
-
-So, what happened here?
-
-First a ```hello_subject``` is declared which will be used to emit notifications to observers that are connected.
-
-Then a connection between ```hello_subject``` and ```hello_function``` is made and stored in ```connection```.
-The ```connection``` variable manages the lifetime of the connection between subject and the connected function.
-The lifetime of connection ends when ```connection``` goes out of scope or gets deleted.
-
-When ```hello_subject``` does a ```notify``` then all observer functions that are connected are called.
-
-### Example 2
-
-This example shows three more features of the library:
-* Usage of a ```pg::connection_owner```.
-* Connecting a lambda to a subject that accepts _less_ arguments than the subject's notify passes on.
-* Connecting a member function to a subject.
-* Disconnecting a function.
-
-``` c++
-struct b : public pg::connection_owner
-{
-    void print( const std::string &str, int i )
-    {
-        std::cout << str << i << std::endl;
-    }
-};
-
-int main( int /* argc */, char * /* argv */[] )
-{
-    pg::connection_owner            owner;
-    pg::subject< std::string, int > foo;
-    b                               bar;
-
-    owner.connect( foo, []( const std::string &str )
-    {
-        std::cout << "Hello " << str << '!' << std::endl;
-    } );
-
-    auto connection = owner.connect( foo, &bar, &b::print );
-
-    foo.notify( "PG", 1003 );
-
-    owner.disconnect( connection );
-
-    foo.notify( "PG", 1003 );
-
-    return 0;
-}
-```
-The output is:
-> Hello PG!  
-> PG1003  
-> Hello PG!
-
-## C++17 CTAD
+### C++17 CTAD
 
 Although C++14 is required, C++17 introduced [CTAD](https://en.cppreference.com/w/cpp/language/class_template_argument_deduction) which simplifies the use of ```pg::subject_blocker``` and makes defining a parameterless ```pg::subject``` prettier.
 
 ``` c++
-pg::subject<> foo;  // C++14
+pg::subject<> foo   // C++14
 pg::subject   foo;  // C++17
 
-pg::subject_blocker< pg::subject<> > blocker( foo );   // C++14
-pg::subject_blocker                  blocker( foo );   // C++17
+pg::blockable_subject<> bar;  // C++14
+pg::subject_blocker< pg::blockable_subject<> > blocker( bar );   // C++14
+pg::subject_blocker                            blocker( bar );   // C++17
 ```
