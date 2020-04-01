@@ -447,6 +447,62 @@ static void subject_lifetime()
     }
 }
 
+
+static void scoped_observer()
+{
+    scoped_connection connection;
+    subject< int >    s;
+
+    int val = 0;
+
+    connection = connect( s, [ & ]( int i ){ val = i; } );
+
+    s.notify( 42 );
+    assert_true( val == 42 );
+
+    {
+        scoped_connection moved_connection( std::move( connection ) );
+
+        s.notify( 1337 );
+        assert_true( val == 1337 );
+    }
+
+    s.notify( 1003 );
+    assert_true( val == 1337 );
+
+    connection = connect( s, [&]{ ++val; } );
+
+    s.notify( 42 );
+    assert_true( val == 1338 );
+
+    struct foo
+    {
+        int * const m_val = nullptr;
+
+        foo( int & v )
+            : m_val( &v )
+        {}
+
+        int operator()( int i )
+        {
+            *m_val = i * 2;
+            return *m_val;
+        }
+
+        ~foo()
+        {
+            *m_val = 0;
+        }
+    };
+
+    connection = connect( s, foo( val ) );
+
+    s.notify( 21 );
+    assert_true( val == 42 );
+
+    connection.reset();
+    assert_true( val == 0 );
+}
 static void observer_disconnect()
 {
     connection_owner owner_1;
@@ -701,6 +757,7 @@ int main( int /* argc */, char * /* argv */[] )
     subject_subject_observer();
     observer_owner_lifetime();
     subject_lifetime();
+    scoped_observer();
     observer_disconnect();
     observer_notify_and_disconnect_order();
     block_subject();
