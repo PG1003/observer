@@ -69,15 +69,20 @@ public:
 namespace detail
 {
 
+// https://en.cppreference.com/w/cpp/types/remove_reference
+template< class T > struct remove_reference      {typedef T type;};
+template< class T > struct remove_reference<T&>  {typedef T type;};
+template< class T > struct remove_reference<T&&> {typedef T type;};
+
 // https://stackoverflow.com/a/27867127
 template< typename T >
-struct invoke_helper : invoke_helper< decltype( &T::operator() ) > {};
+struct invoke_helper : invoke_helper< decltype( &detail::remove_reference< T >::type::operator() ) > {};
 
 template< typename R, typename ...A >
 struct invoke_helper< R ( * )( A... ) >
 {
     template< typename F >
-    static decltype( auto ) invoke( const F function, A... args, ... )
+    static decltype( auto ) invoke( F&& function, A... args, ... )
     {
         return function( std::forward< A >( args )... );
     }
@@ -87,7 +92,7 @@ template< typename R, typename C, typename ...A >
 struct invoke_helper< R ( C:: * )( A... ) >
 {
     template< typename F >
-    static decltype( auto ) invoke( F function, A... args, ... )
+    static decltype( auto ) invoke( F&& function, A... args, ... )
     {
         return function( std::forward< A >( args )... );
     }
@@ -97,7 +102,7 @@ template< typename R, typename C, typename ...A >
 struct invoke_helper< R ( C:: * )( A... ) const >
 {
     template< typename F >
-    static decltype( auto ) invoke( const F function, A... args, ... )
+    static decltype( auto ) invoke( F&& function, A... args, ... )
     {
         return function( std::forward< A >( args )... );
     }
@@ -157,9 +162,15 @@ public:
  * forwarded to \em function is adjusted when \em function accept less parameters than passed to \em invoke.
  */
 template< typename F, typename ...A >
-inline decltype( auto ) invoke( const F function, A... args )
+inline decltype( auto ) invoke( F&& function, A&&... args )
 {
-    return detail::invoke_helper< F >::invoke( function, std::forward< A >( args )... );
+    return detail::invoke_helper< F >::invoke( std::forward< F >( function ), std::forward< A >( args )... );
+}
+
+template< typename R, typename ...Af, typename ...A >
+inline decltype( auto ) invoke( R ( * function )( Af... ), A&&... args )
+{
+    return detail::invoke_helper< R ( * )( Af... ) >::invoke( std::forward< R ( * )( Af... ) >( function ), std::forward< A >( args )... );
 }
 
 /**
@@ -378,8 +389,8 @@ class function_observer
     F m_function;
 
 protected:
-    function_observer( const F &function ) noexcept
-            : m_function( function )
+    function_observer( F&& function ) noexcept
+            : m_function( std::forward< F >( function ) )
     {}
 
     template< typename ...As >
@@ -555,7 +566,17 @@ public:
     connection connect( S &s, F function ) noexcept
     {
         using observer_type = typename detail::observer_type_factory< owner_observer, detail::function_observer< F >, S >::type;
-        return new observer_type( *this, s, function );
+        return new observer_type( *this, s, std::forward< F >( function ) );
+    }
+
+    /**
+     * \overload connection connect( S &s, F function ) noexcept
+     */
+    template< typename S, typename R, typename ...Af >
+    connection connect( S &s, R ( * function )( Af... ) ) noexcept
+    {
+        using observer_type = typename detail::observer_type_factory< owner_observer, detail::function_observer< R ( * )( Af... ) >, S >::type;
+        return new observer_type( *this, s, std::forward< R ( * )( Af... ) >( function ) );
     }
 
     /**
@@ -645,8 +666,11 @@ class scoped_connection
     template< typename S, typename R, typename O, typename ...Ao >
     friend scoped_connection connect( S &s, O * instance, R ( O::* const function )( Ao... ) const ) noexcept;
 
+    template< typename S, typename R, typename ...Af >
+    friend scoped_connection connect( S &s, R ( * function )( Af... ) ) noexcept;
+
     template< typename S, typename F >
-    friend scoped_connection connect( S &s, F function ) noexcept;
+    friend scoped_connection connect( S &s, F&& function ) noexcept;
 
     apex_observer* m_observer = nullptr;
 
@@ -733,10 +757,20 @@ scoped_connection connect( S &s, O * instance, R ( O::* const function )( Ao... 
  * \note When a callable has side effects than the lifetime of these side effects must exceed the scoped_connection's lifetime.
  */
 template< typename S, typename F >
-scoped_connection connect( S &s, F function ) noexcept
+scoped_connection connect( S &s, F&& function ) noexcept
 {
     using observer_type = typename detail::observer_type_factory< detail::scoped_observer, detail::function_observer< F >, S >::type;
-    return new observer_type( s, function );
+    return new observer_type( s, std::forward< F >( function ) );
+}
+
+/**
+ * \overload scoped_connection connect( S &s, F&& function )
+ */
+template< typename S, typename R, typename ...Af >
+scoped_connection connect( S &s, R ( * function )( Af... ) ) noexcept
+{
+    using observer_type = typename detail::observer_type_factory< detail::scoped_observer, detail::function_observer< R ( * )( Af... ) >, S >::type;
+    return new observer_type( s, std::forward< R ( * )( Af... ) >( function ) );
 }
 
 }
