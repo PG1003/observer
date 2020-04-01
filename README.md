@@ -101,7 +101,7 @@ int main( int /* argc */, char * /* argv */[] )
     // 2 A vector to store the values we receive from our subject.
     std::vector< std::string > v;
 
-    // 3 Create an alias for the overloaded member function pointer that we want to connect
+    // 3 Create an alias for type of the overloaded member function pointer that we want to connect.
     using overload = void( std::vector< std::string >::* )( const std::string & );
     
     // 4 Connect the push_back fuction of the vector to our subject.
@@ -163,8 +163,8 @@ For both subjects types you can define with variadic template parameters the val
 These template parameters also defines the observer interface which you can connect to the subject.
 
 ```c++
-pg::subject< int, const char * >  // A subject that notifies an integer and a string, accepts pg::observer< int, const char * > observers interfaces 
-pg::subject<>                     // A subject without prameters, accepts pg::observer<> observer interfaces
+pg::subject< int, const char * > // A subject that passes an integer and a string when notifying its observers.
+pg::subject<>                    // A subject that notifies without values.
 ```
 
 #### Custom subjects
@@ -178,7 +178,7 @@ To create custom subjects you need to define the following two public member fun
 Also you must call for each observer the ```pg::observer< T... >::disconnect``` function before removing it from the object, for example in the destructor.
 
 The example below is a lightweight subject that handles only one observer.
-Note that there is _no_ notify function.
+Note that there is _no_ ```notify``` function.
 The notify function is not a part of the static interface that defines a subject.
 So you can pick any name for the notification function that calls the observer's notify like ```emit``` or build your own method to notify the observer.  
 
@@ -217,7 +217,8 @@ public:
 
 ### Connection lifetime management
 
-Lifetime management of the connection between subjects and observers is important to release resources that are no longer needed or avoid accessing resources that are no longer available.
+Lifetime management of the connection between subjects and observers is important.
+It releases resources that are no longer needed and avoids accessing resources that are no longer available.
 When a subject is removed, all connections to that subject must be removed too.
 The same applies when removing an observer; the observer must be disconnected from its subject. 
  
