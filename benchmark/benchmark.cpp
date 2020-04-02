@@ -7,8 +7,8 @@ using namespace std;
 using namespace std::chrono;
 
 volatile int count_value = 0;
-int iterations  = 1000000;
-int increment   = 1;
+int          iterations  = 100000000;
+volatile int increment   = 1;
 
 
 void increase_count( int value )
@@ -54,6 +54,7 @@ int main( int /* argc */, char * /* argv */[] )
     auto increase_member_function                            = increase( increment );
 
     // Get the baseline
+    count_value = 0;
     const auto baseline_start_free_function = std::chrono::steady_clock::now();
     for( int i = 0 ; i < iterations ; ++i )
     {
@@ -61,6 +62,7 @@ int main( int /* argc */, char * /* argv */[] )
     }
     const auto baseline_stop_free_function = std::chrono::steady_clock::now();
 
+    count_value = 0;
     const auto baseline_start_std_function = std::chrono::steady_clock::now();
     for( int i = 0 ; i < iterations ; ++i )
     {
@@ -68,6 +70,7 @@ int main( int /* argc */, char * /* argv */[] )
     }
     const auto baseline_stop_std_function = std::chrono::steady_clock::now();
 
+    count_value = 0;
     const auto baseline_start_lambda = std::chrono::steady_clock::now();
     for( int i = 0 ; i < iterations ; ++i )
     {
@@ -75,6 +78,7 @@ int main( int /* argc */, char * /* argv */[] )
     }
     const auto baseline_stop_lambda = std::chrono::steady_clock::now();
 
+    count_value = 0;
     const auto baseline_start_functor = std::chrono::steady_clock::now();
     for( int i = 0 ; i < iterations ; ++i )
     {
@@ -82,6 +86,7 @@ int main( int /* argc */, char * /* argv */[] )
     }
     const auto baseline_stop_functor = std::chrono::steady_clock::now();
 
+    count_value = 0;
     const auto baseline_start_member_function = std::chrono::steady_clock::now();
     for( int i = 0 ; i < iterations ; ++i )
     {
@@ -90,6 +95,7 @@ int main( int /* argc */, char * /* argv */[] )
     const auto baseline_stop_member_function = std::chrono::steady_clock::now();
 
     // With observers
+    count_value = 0;
     pg::subject< int > subject_free_function;
     owner.connect( subject_free_function, increase_count );
     const auto start_free_function = std::chrono::steady_clock::now();
@@ -99,6 +105,7 @@ int main( int /* argc */, char * /* argv */[] )
     }
     const auto stop_free_function = std::chrono::steady_clock::now();
 
+    count_value = 0;
     pg::subject< int > subject_std_function;
     owner.connect( subject_std_function, increase_count_std_function );
     const auto start_std_function = std::chrono::steady_clock::now();
@@ -108,6 +115,7 @@ int main( int /* argc */, char * /* argv */[] )
     }
     const auto stop_std_function = std::chrono::steady_clock::now();
 
+    count_value = 0;
     pg::subject< int > subject_lambda;
     owner.connect( subject_lambda, [&]( int value ){ count_value += value; } );
     const auto start_lambda = std::chrono::steady_clock::now();
@@ -117,6 +125,7 @@ int main( int /* argc */, char * /* argv */[] )
     }
     const auto stop_lambda = std::chrono::steady_clock::now();
 
+    count_value = 0;
     pg::subject< int > subject_functor;
     owner.connect( subject_functor, increase_count_functor );
     const auto start_functor = std::chrono::steady_clock::now();
@@ -126,6 +135,7 @@ int main( int /* argc */, char * /* argv */[] )
     }
     const auto stop_functor = std::chrono::steady_clock::now();
 
+    count_value = 0;
     pg::subject< int > subject_member_function;
     owner.connect( subject_member_function, &increase_member_function, &increase::increase_count );
     const auto start_member_function = std::chrono::steady_clock::now();
