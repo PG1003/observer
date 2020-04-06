@@ -70,9 +70,9 @@ namespace detail
 {
 
 // https://en.cppreference.com/w/cpp/types/remove_reference
-template< class T > struct remove_reference      {typedef T type;};
-template< class T > struct remove_reference<T&>  {typedef T type;};
-template< class T > struct remove_reference<T&&> {typedef T type;};
+template< typename T > struct remove_reference        { typedef T type; };
+template< typename T > struct remove_reference< T & > { typedef T type; };
+template< typename T > struct remove_reference< T && >{ typedef T type; };
 
 // https://stackoverflow.com/a/27867127
 template< typename T >
@@ -167,6 +167,9 @@ inline decltype( auto ) invoke( F&& function, A&&... args )
     return detail::invoke_helper< F >::invoke( std::forward< F >( function ), std::forward< A >( args )... );
 }
 
+/**
+ * \overload inline decltype( auto ) invoke( F&& function, A&&... args )
+ */
 template< typename R, typename ...Af, typename ...A >
 inline decltype( auto ) invoke( R ( * function )( Af... ), A&&... args )
 {
@@ -255,7 +258,7 @@ public:
      *
      * \see blockable_subject::unblock blockable_subject::set_block_state
      */
-    void block()
+    void block() noexcept
     {
         ++block_count;
     }
@@ -267,7 +270,7 @@ public:
      *
      * \see blockable_subject::block blockable_subject::set_block_state
      */
-    void unblock()
+    void unblock() noexcept
     {
         if( block_count > 0 )
         {
@@ -289,7 +292,7 @@ public:
      *
      * \see blockable_subject::block blockable_subject::unblock
      */
-    bool set_block_state( bool block_state )
+    bool set_block_state( bool block_state ) noexcept
     {
         if( block_count && !block_state )
         {
@@ -674,21 +677,21 @@ class scoped_connection
 
     apex_observer* m_observer = nullptr;
 
-    scoped_connection( apex_observer * o )
+    scoped_connection( apex_observer * o ) noexcept
             : m_observer( o )
     {}
 
 public:
     scoped_connection() = default;
 
-    scoped_connection( scoped_connection&& other )
+    scoped_connection( scoped_connection&& other ) noexcept
     {
         delete m_observer;
         m_observer       = other.m_observer;
         other.m_observer = nullptr;
     }
 
-    scoped_connection& operator=( scoped_connection&& other )
+    scoped_connection& operator=( scoped_connection&& other ) noexcept
     {
         delete m_observer;
         m_observer       = other.m_observer;
@@ -696,7 +699,7 @@ public:
         return *this;
     }
 
-    ~scoped_connection()
+    ~scoped_connection() noexcept
     {
         delete m_observer;
     }
@@ -704,7 +707,7 @@ public:
     /**
      * \brief Ends the lifetime its connection.
      */
-    void reset()
+    void reset() noexcept
     {
         delete m_observer;
         m_observer = nullptr;
