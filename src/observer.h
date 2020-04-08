@@ -566,7 +566,7 @@ public:
      * \note When a callable has side effects than the lifetime of these side effects must exceed the connection_owner's lifetime.
      */
     template< typename S, typename F >
-    connection connect( S &s, F function ) noexcept
+    connection connect( S &s, F&& function ) noexcept
     {
         using observer_type = typename detail::observer_type_factory< owner_observer, detail::function_observer< F >, S >::type;
         return new observer_type( *this, s, std::forward< F >( function ) );
