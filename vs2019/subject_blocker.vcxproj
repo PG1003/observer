@@ -20,8 +20,8 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
-    <ProjectGuid>{C5D017B5-9AD8-46D6-A3C5-19C7E4E5F4CC}</ProjectGuid>
-    <RootNamespace>ConnectMemberFunctionExample</RootNamespace>
+    <ProjectGuid>{0E0D922F-87D0-42F6-8266-C63A4D5B8D40}</ProjectGuid>
+    <RootNamespace>subject_blocker</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -138,7 +138,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\examples\connect_member_function.cpp" />
+    <ClCompile Include="..\examples\subject_blocker.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

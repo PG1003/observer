@@ -20,10 +20,9 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
-    <ProjectGuid>{CA073B63-C0E9-4D9F-A796-D40B783B053F}</ProjectGuid>
-    <RootNamespace>Examples</RootNamespace>
+    <ProjectGuid>{57057C0D-6277-49FE-A0F6-78E898F238C5}</ProjectGuid>
+    <RootNamespace>disconnect_from_connection_owner</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
-    <ProjectName>ChainSubjectsExample</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -139,7 +138,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\examples\chain_subjects.cpp" />
+    <ClCompile Include="..\examples\disconnect_from_connection_owner.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

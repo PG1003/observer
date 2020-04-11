@@ -20,8 +20,8 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
-    <ProjectGuid>{0FEBA0AE-205A-4094-9888-545F79EFD04F}</ProjectGuid>
-    <RootNamespace>ConnectFunctionObjectsExample</RootNamespace>
+    <ProjectGuid>{CAE2B2FF-FFC7-4CDF-95D5-E90B52C30952}</ProjectGuid>
+    <RootNamespace>variable_argument_count</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -138,7 +138,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\examples\connect_function_objects.cpp" />
+    <ClCompile Include="..\examples\variable_argument_count.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
