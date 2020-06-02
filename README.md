@@ -5,7 +5,7 @@ An observer pattern that can ignore extra arguments like Qt's signals and slots.
 ## Features
 
 * Connected callables can accept _less_ parameters than the subject's interface provides.
-* Defining the observer's notification values by variadic template parameters.
+* Defining the observer's notification values types by variadic template parameters.
 * Connect all kinds of callables to a subject; member functions, lambdas, functors, ```std::function``` and free functions.
 * Lifetime management of the connection between the subject and observer. 
 * [1 header file](https://github.com/PG1003/observer/blob/master/src/observer.h) that includes only 2 headers from the standard template library.
@@ -23,10 +23,12 @@ An observer pattern that can ignore extra arguments like Qt's signals and slots.
 
 ## Non-goals
 
-* Processing return values returned by the connected functions and observers. The return value is ignored for most cases where an observer pattern or signal/slot solution is used.
+* Processing return values returned by the connected functions and observers.  
+  The return value is ignored for most cases where an observer pattern or signal/slot solution is used.
   It also limit the usage of this library and adds complexity; all observers or connected functions must return the same type and the results must becombined when receiving values from multiple observers.
-* Build-in mutexes/atomics/thread safety. Adding these will add complexity and impact the performance for cases where these are not needed.
-  When needed you can create custom subjects that integrates with your application.
+* Build-in mutexes/atomics/thread safety.  
+  Adding these will add complexity and impact the performance for cases where these are not needed.
+  When needed, you can create custom subjects that integrates with your application.
   
   When you really need these features out-of-the-box then you should try [boost signals](https://www.boost.org/doc/libs/1_72_0/doc/html/signals2.html).
 
@@ -61,7 +63,7 @@ int main( int /* argc */, char * /* argv */[] )
 The output is:
 >Hello World!
 
-### Connecting a function that ignores extra parameters from subject
+### Connecting a function that ignores the extra parameters from subject
 
 ```c++
 // 1 A free function that accepts one string parameter.
@@ -101,10 +103,10 @@ int main( int /* argc */, char * /* argv */[] )
     // 2 A vector to store the values we receive from our subject.
     std::vector< std::string > v;
 
-    // 3 Create an alias for type of the overloaded member function pointer that we want to connect.
+    // 3 Create an alias for the type of overloaded member function pointer that we want to connect.
     using overload = void( std::vector< std::string >::* )( const std::string & );
     
-    // 4 Connect the push_back fuction of the vector to our subject.
+    // 4 Connect the vector's push_back fuction to our subject.
     //   We need to cast member function pointer to select the required overload.
     //   Assign the connection to a variable to keep the connection alive.
     auto connection = pg::connect( s, &v, static_cast< overload >( &std::vector< std::string >::push_back ) );
@@ -175,7 +177,7 @@ To create custom subjects you need to define the following two public member fun
 * ```[discarded] connect( pg::observer< T... > * ) [const]```
 * ```[discarded] disconnect( [const] pg::observer< T... > * ) [const]```
 
-Also you must call for each observer the ```pg::observer< T... >::disconnect``` function before removing it from the object, for example in the destructor.
+Also, you must call for each observer the ```pg::observer< T... >::disconnect``` function before removing it from the object, for example in the destructor.
 
 The example below is a lightweight subject that handles only one observer.
 Note that there is _no_ ```notify``` function.
@@ -205,7 +207,7 @@ public:
         m_observer = o;
     }
 
-    void disconnect( pg::const observer< my_data > * const o ) noexcept
+    void disconnect( const pg::observer< my_data > * const o ) noexcept
     {
         if( o == m_observer )
         {

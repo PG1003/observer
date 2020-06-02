@@ -252,7 +252,7 @@ public:
      * \brief Blocks the notification of its observers when called.
      * 
      * This function can be called multiple times which increases a block count.
-     * then you must call \em unblock the same number of times or \em set_block_set( false ).
+     * You must call \em unblock the same number of times to unblock the subject or call \em set_block_state( false ).
      *
      * Notifications are not buffered when the subject is blocked.
      *
@@ -529,7 +529,7 @@ public:
      *
      * \return Returns a connection_owner::connection handle.
      *
-     * The number of parameter that \em function accepts can be less than the number of values that comes with the notification.
+     * The number of parameters that \em function accepts can be less than the number of values that comes with the notification.
      *
      * \note The lifetime of the instance must exceed the connection_owner's lifetime.
      */
@@ -558,7 +558,7 @@ public:
      *
      * \return Returns a connection_owner::connection handle.
      *
-     * The number of parameter that \em function accepts can be less than the number of values that comes with the notification.
+     * The number of parameters that \em function accepts can be less than the number of values that comes with the notification.
      *
      * The \em function is copied and stored in the connection_owner.
      * This means that the callables must have a copy constructor.
@@ -723,7 +723,7 @@ public:
  *
  * \return Returns a pg::scoped_connection.
  *
- * The number of parameter that \em function accepts can be less than the number of values that comes with the notification.
+ * The number of parameters that \em function accepts can be less than the number of values that comes with the notification.
  *
  * \note The lifetime of the instance must exceed the scoped_connection's lifetime.
  */
@@ -752,7 +752,7 @@ scoped_connection connect( S &s, O * instance, R ( O::* const function )( Ao... 
  *
  * \return Returns a pg::scoped_connection.
  *
- * The number of parameter that \em function accepts can be less than the number of values that comes with the notification.
+ * The number of parameters that \em function accepts can be less than the number of values that comes with the notification.
  *
  * The \em function is copied and stored in the connection_owner.
  * This means that the callables must have a copy constructor.
