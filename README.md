@@ -274,7 +274,7 @@ s.notify( 1337 );   // Prints nothing, observer owner went out of scope
 ```
 ### C++17 CTAD
 
-Although C++14 is required, C++17 introduced [CTAD](https://en.cppreference.com/w/cpp/language/class_template_argument_deduction) which simplifies the use of ```pg::subject_blocker``` and makes defining a parameterless ```pg::subject``` prettier.
+Although at least C++14 is required, C++17 introduced [CTAD](https://en.cppreference.com/w/cpp/language/class_template_argument_deduction) which simplifies the use of ```pg::subject_blocker``` and makes defining a parameterless ```pg::subject``` prettier.
 
 ``` c++
 pg::subject<> foo   // C++14
