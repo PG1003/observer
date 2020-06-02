@@ -12,7 +12,7 @@ An observer pattern that can ignore extra arguments like Qt's signals and slots.
 
 ## Requirements
 
-* C++14 compliant compiller. 
+* Compiller support for C++14 or later. 
 
 ## Goals
 
