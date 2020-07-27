@@ -1,4 +1,11 @@
-# 2.0.0
+# Current
+
+Changes:
+- Revisited noexcept specifiers.
+- Fixed a universal reference for the pg::connection_owner::connect overload that
+  connects function objects.
+
+# 2.0.1
 
 Changes:
 - pg::connection_owner now uses a vector instead of a set to store connections.
