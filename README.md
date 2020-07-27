@@ -25,12 +25,29 @@ An observer pattern that can ignore extra arguments like Qt's signals and slots.
 
 * Processing return values returned by the connected functions and observers.  
   The return value is ignored for most cases where an observer pattern or signal/slot solution is used.
-  It also limit the usage of this library and adds complexity; all observers or connected functions must return the same type and the results must becombined when receiving values from multiple observers.
+  It also limits the usage of this library and adds complexity; all observers or connected functions must return the same type and the results must becombined when receiving values from multiple observers.
 * Build-in mutexes/atomics/thread safety.  
   Adding these will add complexity and impact the performance for cases where these are not needed.
   When needed, you can create custom subjects that integrates with your application.
   
   When you really need these features out-of-the-box then you should try [boost signals](https://www.boost.org/doc/libs/1_72_0/doc/html/signals2.html).
+
+## Benchmark
+
+There is a [benchmark](https://github.com/PG1003/observer/blob/master/benchmark/benchmark.cpp) that indicates how much the observer mechanism adds to the function call overhead, _not_ the total slowdown of a function.  
+In real-world scenarios, the time spend in the body of the function often outweights the call overhead of a function.
+So in many cases the added function call overhead will be negletable.
+
+The table below are the results of a benchmark that was executed on a system with the following specifications;  
+OS: Manjaro Linux 64-bit, CPU: i5-5250U, RAM: 16 GB LPDDR3-1866, Compiler: GCC 10.1.0, Compiler flags: -std=c++14 -Wall -Wextra -Wpedantic -O3.
+
+|   | baseline | observer | difference |
+|---|----------|----------|------------|
+| free function | 243254.44 | 361678.09 | 1.49x |
+| std::function | 243558.03 | 522351.25 | 2.14x |
+| lambda | 241195.89 | 281690.34 | 1.17x |
+| functor | 240892.38 | 282730.97 | 1.17x |
+| member function| 240899.56 | 403652.97 | 1.68x |
 
 ## Examples
 
