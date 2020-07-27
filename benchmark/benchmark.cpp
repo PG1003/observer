@@ -172,15 +172,15 @@ int main( int /* argc */, char * /* argv */[] )
     auto member_function_result = result( baseline_start_member_function, baseline_stop_member_function, start_member_function, stop_member_function );
 
     printf(
-        "|---------------------------------------------------------\n"
+        "|--------------------------------------------------------|\n"
         "|                 |  baseline  |  observer  | difference |\n"
-        "|---------------------------------------------------------\n"
+        "|--------------------------------------------------------|\n"
         "| free function   | %10.2f | %10.2f | %9.2fx |\n"
         "| std::function   | %10.2f | %10.2f | %9.2fx |\n"
         "| lambda          | %10.2f | %10.2f | %9.2fx |\n"
         "| functor         | %10.2f | %10.2f | %9.2fx |\n"
         "| member function | %10.2f | %10.2f | %9.2fx |\n"
-        "----------------------------------------------------------\n",
+        "|--------------------------------------------------------|\n",
         free_function_result.m_base_time,   free_function_result.m_time,  free_function_result.m_difference,
         std_function_result.m_base_time,    std_function_result.m_time,   std_function_result.m_difference,
         lambda_result.m_base_time,          lambda_result.m_time,         lambda_result.m_difference,
