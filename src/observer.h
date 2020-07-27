@@ -32,7 +32,7 @@ namespace pg
 /**
  * \brief The base of all observers.
  *
- * This base class can be used to collect or own all kinds of observers in one collection.
+ * This base class is to type erase the observers so that different observer types can be collected in a container.
  */
 class apex_observer
 {
@@ -652,7 +652,7 @@ public:
 /**
  * \brief Owns a connection between subject <--> observer.
  *
- * A pg::scoped_connection is created by one of pg::connect functions.
+ * A pg::scoped_connection is created by the pg::connect functions.
  * The lifetime of the connection owned by pg::scoped_connection and ends when a pg::scoped_connection goes out of scope or gets deleted.
  *
  * When assigning a new connection returned by pg::connect, the connection it currently holds will be deleted before taking ownership of the new one.
