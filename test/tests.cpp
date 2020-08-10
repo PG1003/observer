@@ -447,7 +447,6 @@ static void subject_lifetime()
     }
 }
 
-
 static void scoped_observer()
 {
     scoped_connection connection;
@@ -503,6 +502,7 @@ static void scoped_observer()
     connection.reset();
     assert_true( val == 0 );
 }
+
 static void observer_disconnect()
 {
     connection_owner owner_1;
@@ -746,6 +746,106 @@ static void invoke_function()
     assert_true( int_std_function == 42 );
 }
 
+struct object_forwarding
+{
+    object_forwarding() = delete;
+    object_forwarding( const object_forwarding & ) = delete;
+    object_forwarding( const object_forwarding && ) = delete;
+    object_forwarding & operator =( const object_forwarding & ) = delete;
+    object_forwarding & operator =( const object_forwarding && ) = delete;
+
+    object_forwarding( int value )
+        : m_value( value )
+    {}
+
+    const int m_value;
+};
+
+void free_function_object_forwarding( const object_forwarding &o )
+{
+    assert_true( o.m_value == 1003 );
+}
+
+struct member_functions_object_forwarding
+{
+    void operator()( const object_forwarding &o )
+    {
+        assert_true( o.m_value == 1003 );
+    }
+
+    void foo( const object_forwarding &o )
+    {
+        assert_true( o.m_value == 1003 );
+    }
+
+    void bar( const object_forwarding &o ) const
+    {
+        assert_true( o.m_value == 1003 );
+    }
+};
+
+struct const_member_functions_object_forwarding
+{
+    void operator()( const object_forwarding &o ) const
+    {
+        assert_true( o.m_value == 1003 );
+    }
+
+    void bar( const object_forwarding &o ) const
+    {
+        assert_true( o.m_value == 1003 );
+    }
+};
+
+static void const_and_forwarding()
+{
+    subject< const object_forwarding & > s;
+    pg::connection_owner           owner;
+
+    member_functions_object_forwarding             member_functions;
+    const member_functions_object_forwarding       member_functions_const;
+    const_member_functions_object_forwarding       const_member_functions;
+    const const_member_functions_object_forwarding const_member_functions_const;
+
+    owner.connect( s, []( const object_forwarding &o )
+        {
+            assert_true( o.m_value == 1003 );
+        } );
+    owner.connect( s, free_function_object_forwarding );
+
+    owner.connect( s, member_functions );
+    owner.connect( s, &member_functions, &member_functions_object_forwarding::foo );
+    owner.connect( s, &member_functions, &member_functions_object_forwarding::bar );
+
+    owner.connect( s, &member_functions_const, &member_functions_object_forwarding::bar );
+
+    owner.connect( s, const_member_functions );
+    owner.connect( s, &const_member_functions, &const_member_functions_object_forwarding::bar );
+
+    owner.connect( s, const_member_functions_const );
+    owner.connect( s, &const_member_functions_const, &const_member_functions_object_forwarding::bar );
+
+    const auto c1 = pg::connect( s, []( const object_forwarding &o )
+        {
+            assert_true( o.m_value == 1003 );
+        } );
+    const auto c2 = pg::connect( s, free_function_object_forwarding );
+
+    const auto c3 = pg::connect( s, member_functions );
+    const auto c4 = pg::connect( s, &member_functions, &member_functions_object_forwarding::foo );
+    const auto c5 = pg::connect( s, &member_functions, &member_functions_object_forwarding::bar );
+
+    const auto c6 = pg::connect( s, &member_functions_const, &member_functions_object_forwarding::bar );
+
+    const auto c7 = pg::connect( s, const_member_functions );
+    const auto c8 = pg::connect( s, &const_member_functions, &const_member_functions_object_forwarding::bar );
+
+    const auto c9  = pg::connect( s, const_member_functions_const );
+    const auto c10 = pg::connect( s, &const_member_functions_const, &const_member_functions_object_forwarding::bar );
+
+    s.notify( object_forwarding( 1003 ) );
+}
+
 
 int main( int /* argc */, char * /* argv */[] )
 {
@@ -763,6 +863,7 @@ int main( int /* argc */, char * /* argv */[] )
     block_subject();
     type_compatibility();
     invoke_function();
+    const_and_forwarding();
 
     std::cout << "Total asserts: " << total_asserts << ", asserts failed: " << failed_asserts << std::endl;
 

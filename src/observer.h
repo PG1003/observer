@@ -551,6 +551,16 @@ public:
     }
 
     /**
+     * \overload connect( S & s, O * instance, R( O::* )( Ao... ) function )
+     */
+    template< typename S, typename R, typename O, typename ...Ao >
+    connection connect( S &s, const O * instance, R ( O::* const function )( Ao... ) const ) noexcept
+    {
+        using observer_type = typename detail::observer_type_factory< owner_observer, detail::member_function_observer< const O, R ( O::* )( Ao... ) const, Ao... >, S >::type;
+        return new observer_type( *this, s, instance, function );
+    }
+
+    /**
      * \brief Connects a callable to a subject.
      *
      * \param s        The subject from which \em function will receive notifications.
@@ -560,8 +570,7 @@ public:
      *
      * The number of parameters that \em function accepts can be less than the number of values that comes with the notification.
      *
-     * The \em function is copied and stored in the connection_owner.
-     * This means that the callables must have a copy constructor.
+     * \note The \em function is copied and stored in the connection_owner. This means that the callables must have a copy constructor.
      *
      * \note When a callable has side effects than the lifetime of these side effects must exceed the connection_owner's lifetime.
      */
@@ -669,6 +678,9 @@ class scoped_connection
     template< typename S, typename R, typename O, typename ...Ao >
     friend scoped_connection connect( S &s, O * instance, R ( O::* const function )( Ao... ) const ) noexcept;
 
+    template< typename S, typename R, typename O, typename ...Ao >
+    friend scoped_connection connect( S &s, const O * instance, R ( O::* const function )( Ao... ) const ) noexcept;
+
     template< typename S, typename R, typename ...Af >
     friend scoped_connection connect( S &s, R ( * function )( Af... ) ) noexcept;
 
@@ -745,6 +757,16 @@ scoped_connection connect( S &s, O * instance, R ( O::* const function )( Ao... 
 }
 
 /**
+ * \overload connect( S & s, O * instance, R( O::* )( Ao... ) function )
+ */
+template< typename S, typename R, typename O, typename ...Ao >
+scoped_connection connect( S &s, const O * instance, R ( O::* const function )( Ao... ) const ) noexcept
+{
+    using observer_type = typename detail::observer_type_factory< detail::scoped_observer, detail::member_function_observer< const O, R ( O::* )( Ao... ) const, Ao... >, S >::type;
+    return new observer_type( s, instance, function );
+}
+
+/**
  * \brief Connects a callable to a subject.
  *
  * \param s        The subject from which \em function will receive notifications.
@@ -754,8 +776,7 @@ scoped_connection connect( S &s, O * instance, R ( O::* const function )( Ao... 
  *
  * The number of parameters that \em function accepts can be less than the number of values that comes with the notification.
  *
- * The \em function is copied and stored in the connection_owner.
- * This means that the callables must have a copy constructor.
+ * \note The \em function is copied and stored in the connection_owner. This means that the callables must have a copy constructor.
  *
  * \note When a callable has side effects than the lifetime of these side effects must exceed the scoped_connection's lifetime.
  */
