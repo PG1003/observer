@@ -4,6 +4,7 @@ Changes:
 - Revisited noexcept specifiers.
 - Fixed a universal reference for the pg::connection_owner::connect overload that
   connects function objects.
+- Fixed connecting const member functions for instances that are const.
 
 # 2.0.1
 
