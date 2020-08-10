@@ -1,6 +1,6 @@
 # observer
 
-An observer pattern that can ignore extra arguments like Qt's signals and slots.
+An observer pattern that can ignore extra parameters like Qt's signals and slots.
 
 ## Features
 
