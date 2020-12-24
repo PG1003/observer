@@ -1,6 +1,6 @@
 # observer
 
-An observer pattern that can ignore extra parameters like Qt's signals and slots.
+An observer pattern / signal slot pattern that can ignore extra parameters like Qt's signals and slots.
 
 ## Features
 
@@ -12,7 +12,7 @@ An observer pattern that can ignore extra parameters like Qt's signals and slots
 
 ## Requirements
 
-* Compiller support for C++14 or later. 
+* Compiller that supports C++14 or newer.
 
 ## Goals
 
@@ -115,7 +115,7 @@ The output is:
 int main( int /* argc */, char * /* argv */[] )
 {
     // 1 Define a subject that passes a string to its observers.
-    subject< const std::string & > s;
+    pg::subject< const std::string & > s;
     
     // 2 A vector to store the values we receive from our subject.
     std::vector< std::string > v;
@@ -194,12 +194,12 @@ To create custom subjects you need to define the following two public member fun
 * ```[discarded] connect( pg::observer< T... > * ) [const]```
 * ```[discarded] disconnect( [const] pg::observer< T... > * ) [const]```
 
-Also, you must call for each observer the ```pg::observer< T... >::disconnect``` function before removing it from the object, for example in the destructor.
+Also, you must call for each observer the ```pg::observer< T... >::disconnect()``` function before removing it from the object, for example in the destructor.
 
 The example below is a lightweight subject that handles only one observer.
 Note that there is _no_ ```notify``` function.
 The notify function is not a part of the static interface that defines a subject.
-So you can pick any name for the notification function that calls the observer's notify like ```emit``` or build your own method to notify the observer.  
+So you can pick any name for the notification function that calls the observer's notify like ```emit``` or create your own method to notify the observer.
 
 ```c++
 class my_subject
@@ -251,7 +251,7 @@ A scoped connection is a lightweight object of the ```pg::scoped_connection``` t
 The lifetime of the connection ends when the lifetime of the subject ends or when the scoped connection object goes out of scope.
 
 Scoped connections are returned by the ```pg::connect``` functions when connecting a member function or a callable to a subject. 
-These connections can be used at places where a limited number of connections are maintained.
+This connection type can be used at places where a limited number of connections are maintained.
 
 ```c++
 pg::subject< int > s;
@@ -268,7 +268,7 @@ s.notify( 1337 );   // Prints nothing, connection went out of scope
 
 #### Connection owner
 
-A connection owner is usefull for places where a lot of connections need to be managed.
+A connection owner is usefull for places where a lot of connections needs to be managed.
 You can add a connection owner via composition by adding a ```pg::connection_owner``` member or give a object connection owner traits by deriving from it.
 The lifetime of a connection is bound to the connection owner's lifetime.
 Connections are automatically removed from the connection owner when the subject goes out of scope or gets deleted. 
@@ -287,7 +287,7 @@ pg::subject< int > s;
     s.notify( 21 ); // Prints '21' and '42'
 }
 
-s.notify( 1337 );   // Prints nothing, observer owner went out of scope
+s.notify( 1337 );   // Prints nothing, connection owner went out of scope
 ```
 ### C++17 CTAD
 
