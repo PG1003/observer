@@ -29,16 +29,17 @@
 namespace pg
 {
 
-/**
- * \brief The base of all observers.
- *
- * This base class is to type erase the observers so that different observer types can be collected in a container.
- */
+namespace detail
+{
+
+// This base class is to type erase the observers so that different observer types can be collected in a container.
 class apex_observer
 {
 public:
     virtual ~apex_observer() noexcept = default;
 };
+
+}
 
 /**
  * \brief Interface for observer objects.
@@ -48,7 +49,7 @@ public:
  * \see subject
  */
 template< typename ...A >
-class observer : public apex_observer
+class observer : public detail::apex_observer
 {
 public:
     /**
@@ -687,9 +688,9 @@ class scoped_connection
     template< typename S, typename F >
     friend scoped_connection connect( S &s, F&& function ) noexcept;
 
-    apex_observer* m_observer = nullptr;
+    detail::apex_observer* m_observer = nullptr;
 
-    scoped_connection( apex_observer * o ) noexcept
+    scoped_connection( detail::apex_observer * o ) noexcept
             : m_observer( o )
     {}
 

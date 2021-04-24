@@ -1,9 +1,15 @@
+# 2.x.x
+
+Chagnes:
+- Removed apex_observer class from the public API and moved it to detail
+  namespace of the observer library.
+
 # 2.0.2
 
 Changes:
 - Revisited noexcept specifiers.
-- Fixed a universal reference for the pg::connection_owner::connect overload that
-  connects function objects.
+- Fixed a universal reference for the pg::connection_owner::connect overload
+  that connects function objects.
 - Fixed connecting const member functions for instances that are const.
 
 # 2.0.1
