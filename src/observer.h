@@ -358,13 +358,13 @@ struct observer_type_factory : observer_type_factory< D, B, decltype( &S::connec
 {};
 
 template< template< class, class, class... > class D, typename B, typename R, typename S, typename ...Ao >
-struct observer_type_factory< D, B, R ( S:: * )( observer< Ao... > * ) >
+struct observer_type_factory< D, B, R ( S:: * )( observer< Ao... > * ) noexcept >
 {
     using type = D< B, S, Ao... >;
 };
 
 template< template< class, class, class... > class D, typename B, typename R, typename S, typename ...Ao >
-struct observer_type_factory< D, B, R ( S:: * )( observer< Ao... > * ) const >
+struct observer_type_factory< D, B, R ( S:: * )( observer< Ao... > * ) const noexcept >
 {
     using type = D< B, S, Ao... >;
 };
