@@ -1,10 +1,10 @@
 # 2.1.0
 
-Chagnes:
+Changes:
 - Removed apex_observer class from the public API and moved it to detail
   namespace of the observer library.
 - Fixed compilation with C++17 or newer.
-- Build tests with C++17. 
+- Build tests, examples and benchmark with C++17. 
 
 # 2.0.2
 
