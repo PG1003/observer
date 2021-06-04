@@ -1,6 +1,8 @@
 #include <observer.h>
 #include <iostream>
 #include <string>
+#include <string_view>
+#include <vector>
 #include <functional>
 #include <memory>
 
@@ -846,6 +848,135 @@ static void const_and_forwarding()
     s.notify( object_forwarding( 1003 ) );
 }
 
+static std::string hello_called;
+static void hello( const std::string & str )
+{
+    hello_called = "Hello " + str;
+}
+
+void readme_examples()
+{
+    // Connecting a lambda
+    {
+        std::string hello_world_called;
+
+        pg::subject<> hello_subject;
+
+        auto connection = pg::connect( hello_subject, [&]{ hello_world_called = "Hello World!"; } );
+
+        hello_subject.notify();
+
+        assert_true( hello_world_called == "Hello World!" );
+    }
+
+    // Connecting a function that ignores the extra parameters from subject
+    {
+        pg::subject< const char *, int > world_subject;
+
+        auto connection = pg::connect( world_subject, hello );
+
+        world_subject.notify( "World!", 42 );
+
+        assert_true( hello_called == "Hello World!" );
+    }
+
+    // Connecting a member function
+    {
+        pg::subject< const std::string & > s;
+
+        std::vector< std::string > v;
+
+        using overload = void( std::vector< std::string >::* )( const std::string & );
+
+        auto connection = pg::connect( s, &v, static_cast< overload >( &std::vector< std::string >::push_back ) );
+
+        s.notify( "Hello" );
+        s.notify( "World!" );
+
+        assert_true( v.size() == 2 );
+        assert_true( v[ 0 ] == "Hello" );
+        assert_true( v[ 1 ] == "World!" );
+    }
+
+    // Manage multiple connections using a `pg::connection_owner`
+    {
+        pg::subject< std::string > foo;
+
+        std::string first_called;
+        std::string second_called;
+
+        {
+            pg::connection_owner connections;
+
+            connections.connect( foo, [&]( std::string_view message )
+            {
+                first_called = message.substr();
+            } );
+
+            connections.connect( foo, [&]
+            {
+                second_called = "Hello World!";
+            } );
+
+            foo.notify( "Hello PG1003!" );
+
+            assert_true( first_called == "Hello PG1003!" );
+            assert_true( second_called == "Hello World!" );
+        }
+
+        first_called.clear();
+        second_called.clear();
+
+        // 5 The connection owner object went out of scope and disconnected the observer functions.
+        //   The next notify prints nothing.
+        foo.notify( "How are you?" );
+
+        assert_true( first_called.empty() );
+        assert_true( second_called.empty() );
+    }
+
+    // Manage multiple connections by inheriting from `pg::connection_owner`
+    {
+        std::string print_called;
+        std::string print_bar_called;
+
+        struct bar_object : public pg::connection_owner
+        {
+            std::string & m_print_called;
+            std::string & m_print_bar_called;
+
+            bar_object( pg::subject< std::string > & foo, std::string & pc, std::string & pbc )
+                    : m_print_called( pc )
+                    , m_print_bar_called( pbc )
+            {
+                connect( foo, this, &bar_object::print );
+                connect( foo, this, &bar_object::print_bar );
+            }
+
+            void print( std::string_view str ) { m_print_called = str; }
+            void print_bar() { m_print_bar_called = "bar"; }
+        };
+
+        pg::subject< std::string > foo;
+
+        {
+            bar_object bar( foo, print_called, print_bar_called );
+
+            foo.notify( "foo" );
+
+            assert_true( print_called == "foo" );
+            assert_true( print_bar_called == "bar" );
+        }
+
+        print_called.clear();
+        print_bar_called.clear();
+
+        foo.notify( "baz" );
+
+        assert_true( print_called.empty() );
+        assert_true( print_bar_called.empty() );
+    }
+}
 
 int main( int /* argc */, char * /* argv */[] )
 {
@@ -864,6 +995,7 @@ int main( int /* argc */, char * /* argv */[] )
     type_compatibility();
     invoke_function();
     const_and_forwarding();
+    readme_examples();
 
     std::cout << "Total asserts: " << total_asserts << ", asserts failed: " << failed_asserts << std::endl;
 

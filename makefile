@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -std=c++14 -Wall -Wextra -Wpedantic -O3
+CXXFLAGS = -std=c++17 -Wall -Wextra -Wpedantic -O3
 INCLUDES = -I "./src"
 LDFLAGS =
 
