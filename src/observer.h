@@ -25,6 +25,14 @@
 #include <vector>
 #include <algorithm>
 
+#ifdef __has_cpp_attribute
+# if __has_cpp_attribute( nodiscard )
+#  define PG_OBSERVER_NODISCARD [[nodiscard]]
+# endif
+#endif
+#ifndef PG_OBSERVER_NODISCARD
+# define PG_OBSERVER_NODISCARD
+#endif
 
 namespace pg
 {
@@ -741,7 +749,7 @@ public:
  * \note The lifetime of the instance must exceed the scoped_connection's lifetime.
  */
 template< typename S, typename R, typename O, typename ...Ao >
-scoped_connection connect( S &s, O * instance, R ( O::* const function )( Ao... ) ) noexcept
+PG_OBSERVER_NODISCARD scoped_connection connect( S &s, O * instance, R ( O::* const function )( Ao... ) ) noexcept
 {
     using observer_type = typename detail::observer_type_factory< detail::scoped_observer, detail::member_function_observer< O, R ( O::* )( Ao... ), Ao... >, S >::type;
     return new observer_type( s, instance, function );
@@ -751,7 +759,7 @@ scoped_connection connect( S &s, O * instance, R ( O::* const function )( Ao... 
  * \overload connect( S & s, O * instance, R( O::* )( Ao... ) function )
  */
 template< typename S, typename R, typename O, typename ...Ao >
-scoped_connection connect( S &s, O * instance, R ( O::* const function )( Ao... ) const ) noexcept
+PG_OBSERVER_NODISCARD scoped_connection connect( S &s, O * instance, R ( O::* const function )( Ao... ) const ) noexcept
 {
     using observer_type = typename detail::observer_type_factory< detail::scoped_observer, detail::member_function_observer< O, R ( O::* )( Ao... ) const, Ao... >, S >::type;
     return new observer_type( s, instance, function );
@@ -761,7 +769,7 @@ scoped_connection connect( S &s, O * instance, R ( O::* const function )( Ao... 
  * \overload connect( S & s, O * instance, R( O::* )( Ao... ) function )
  */
 template< typename S, typename R, typename O, typename ...Ao >
-scoped_connection connect( S &s, const O * instance, R ( O::* const function )( Ao... ) const ) noexcept
+PG_OBSERVER_NODISCARD scoped_connection connect( S &s, const O * instance, R ( O::* const function )( Ao... ) const ) noexcept
 {
     using observer_type = typename detail::observer_type_factory< detail::scoped_observer, detail::member_function_observer< const O, R ( O::* )( Ao... ) const, Ao... >, S >::type;
     return new observer_type( s, instance, function );
@@ -782,7 +790,7 @@ scoped_connection connect( S &s, const O * instance, R ( O::* const function )( 
  * \note When a callable has side effects than the lifetime of these side effects must exceed the scoped_connection's lifetime.
  */
 template< typename S, typename F >
-scoped_connection connect( S &s, F&& function ) noexcept
+PG_OBSERVER_NODISCARD scoped_connection connect( S &s, F&& function ) noexcept
 {
     using observer_type = typename detail::observer_type_factory< detail::scoped_observer, detail::function_observer< F >, S >::type;
     return new observer_type( s, std::forward< F >( function ) );
@@ -792,7 +800,7 @@ scoped_connection connect( S &s, F&& function ) noexcept
  * \overload scoped_connection connect( S &s, F&& function )
  */
 template< typename S, typename R, typename ...Af >
-scoped_connection connect( S &s, R ( * function )( Af... ) ) noexcept
+PG_OBSERVER_NODISCARD scoped_connection connect( S &s, R ( * function )( Af... ) ) noexcept
 {
     using observer_type = typename detail::observer_type_factory< detail::scoped_observer, detail::function_observer< R ( * )( Af... ) >, S >::type;
     return new observer_type( s, std::forward< R ( * )( Af... ) >( function ) );

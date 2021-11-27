@@ -1,10 +1,15 @@
+# 2.x.y
+
+Changes:
+- Added [[nodiscard]] attribute for pg::connect functions.
+
 # 2.1.0
 
 Changes:
-- Removed apex_observer class from the public API and moved it to detail
+- Removed apex_observer class from the public API and moved it to the detail
   namespace of the observer library.
 - Fixed compilation with C++17 or newer.
-- Build tests, examples and benchmark with C++17. 
+- Build tests, examples and benchmark with C++17.
 
 # 2.0.2
 
@@ -19,7 +24,7 @@ Changes:
 Changes:
 - pg::connection_owner now uses a vector instead of a set to store connections.
   A vector is faster more memory efficient than a set when used as a storage.
-  Also this makes possible to make the order of disconnecting observers from 
+  Also this makes possible to make the order of disconnecting observers from
   the subjects the reverse of they were connected.
 - Added pg::connect functions which return a pg::scoped_connection. These can
   be used in case a connection_owner is a overkill, for example when you need
@@ -27,10 +32,10 @@ Changes:
   The lifetime of the connection is coupeld to pg::scoped_connection.
 - Renamed pg::observer_owner to pg::connection_owner and provided an alias for
   the old name to ensure backwards compatibility.
-  The new name expresses better the functionality of the object. 
+  The new name expresses better the functionality of the object.
 - pg::connection_owner supports static polymorphism for subjects. A subject is
   required to have a connect and a disconnect function that accepts an observer
-  interace pointer as parameter.
+  interface pointer as parameter.
 - Added pg::blockable_subject. This subject type maintains a block count so
   that multiple resources can block its notifications.
 
@@ -42,7 +47,7 @@ Breaking changes:
 - pg::subject_blocker now requires subjects to provide a block and a unblock
   function, for example like pg::blockable_subject.
 - A connection is no longer automaticly invalidated. The usability of this
-  feature didn't justify the extra complexity.  
+  feature didn't justify the extra complexity.
 
 # 1.1.1
 
