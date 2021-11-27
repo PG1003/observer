@@ -90,8 +90,8 @@ struct invoke_helper : invoke_helper< decltype( &detail::remove_reference< T >::
 template< typename R, typename ...A >
 struct invoke_helper< R ( * )( A... ) >
 {
-    template< typename F >
-    static decltype( auto ) invoke( F&& function, A... args, ... )
+    template< typename F, typename ...Ar >
+    static decltype( auto ) invoke( F&& function, A... args, Ar&&... )
     {
         return function( std::forward< A >( args )... );
     }
@@ -100,8 +100,8 @@ struct invoke_helper< R ( * )( A... ) >
 template< typename R, typename C, typename ...A >
 struct invoke_helper< R ( C:: * )( A... ) >
 {
-    template< typename F >
-    static decltype( auto ) invoke( F&& function, A... args, ... )
+    template< typename F, typename ...Ar >
+    static decltype( auto ) invoke( F&& function, A... args, Ar&&... )
     {
         return function( std::forward< A >( args )... );
     }
@@ -110,8 +110,8 @@ struct invoke_helper< R ( C:: * )( A... ) >
 template< typename R, typename C, typename ...A >
 struct invoke_helper< R ( C:: * )( A... ) const >
 {
-    template< typename F >
-    static decltype( auto ) invoke( F&& function, A... args, ... )
+    template< typename F, typename ...Ar >
+    static decltype( auto ) invoke( F&& function, A... args, Ar&&... )
     {
         return function( std::forward< A >( args )... );
     }
@@ -389,7 +389,8 @@ protected:
             , m_function( function )
     {}
 
-    void invoke( Ao&&... args, ... )
+    template< typename ...Ar >
+    void invoke( Ao&&... args, Ar&&... )
     {
         ( m_instance->*m_function )( std::forward< Ao >( args )... );
     }
