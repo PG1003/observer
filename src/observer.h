@@ -628,7 +628,7 @@ public:
  * observer_owner was renamed to connection_owner.
  * The name 'connection_owner' expresses better what the object does; owning the lifetime of the connections.
  */
-using observer_owner = connection_owner;
+using observer_owner [[deprecated]] = connection_owner;
 
 namespace detail
 {
