@@ -1,7 +1,9 @@
 #include <observer.h>
 #include <iostream>
 #include <string>
+#if __cplusplus >= 201703L
 #include <string_view>
+#endif
 #include <vector>
 #include <functional>
 #include <memory>
@@ -898,6 +900,7 @@ void readme_examples()
         assert_true( v[ 1 ] == "World!" );
     }
 
+#if __cplusplus >= 201703L
     // Manage multiple connections using a `pg::connection_owner`
     {
         pg::subject< std::string > foo;
@@ -976,6 +979,7 @@ void readme_examples()
         assert_true( print_called.empty() );
         assert_true( print_bar_called.empty() );
     }
+#endif
 }
 
 int main( int /* argc */, char * /* argv */[] )
