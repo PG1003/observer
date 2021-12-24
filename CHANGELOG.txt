@@ -2,6 +2,8 @@
 
 Changes:
 - Added [[nodiscard]] attribute for pg::connect functions.
+- Fixed level 4 warning C4840 when building the tests as C++17 with MSVC.
+- Added [[deprecated]] attribute for the pg::observer_owner.
 
 # 2.1.0
 
