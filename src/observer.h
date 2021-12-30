@@ -146,10 +146,7 @@ public:
     {
         // Iterate reversed over the m_observers since we expect that observers that
         // are frequently connected and disconnected resides at the end of the vector.
-        auto it_find = std::find_if( m_observers.crbegin(), m_observers.crend(), [o]( const auto &other )
-        {
-            return other == o;
-        } );
+        auto it_find = std::find( m_observers.crbegin(), m_observers.crend(), o );
         if( it_find != m_observers.crend() )
         {
             m_observers.erase( ( ++it_find ).base() );
@@ -475,10 +472,7 @@ class connection_owner
 
     auto find_observer( const abstract_observer * const o )
     {
-        auto it_find = std::find_if( m_observers.crbegin(), m_observers.crend(), [o]( const abstract_observer * const other )
-        {
-            return other == o;
-        } );
+        auto it_find = std::find( m_observers.crbegin(), m_observers.crend(), o );
 
         return it_find == m_observers.crend() ? m_observers.cend() : ( ++it_find ).base();
     }
