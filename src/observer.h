@@ -29,9 +29,15 @@
 # if __has_cpp_attribute( nodiscard )
 #  define PG_OBSERVER_NODISCARD [[nodiscard]]
 # endif
+# if __has_cpp_attribute( likely )
+#  define PG_OBSERVER_LIKELY [[likely]]
+# endif
 #endif
 #ifndef PG_OBSERVER_NODISCARD
 # define PG_OBSERVER_NODISCARD
+#endif
+#ifndef PG_OBSERVER_LIKELY
+# define PG_OBSERVER_LIKELY
 #endif
 
 namespace pg
@@ -147,7 +153,7 @@ public:
         // Iterate reversed over the m_observers since we expect that observers that
         // are frequently connected and disconnected resides at the end of the vector.
         auto it_find = std::find( m_observers.crbegin(), m_observers.crend(), o );
-        if( it_find != m_observers.crend() )
+        if( it_find != m_observers.crend() ) PG_OBSERVER_LIKELY
         {
             m_observers.erase( ( ++it_find ).base() );
         }
@@ -480,7 +486,7 @@ class connection_owner
     void remove_observer( abstract_observer * const o ) noexcept
     {
         auto it_find = find_observer( o );
-        if( it_find != m_observers.cend() )
+        if( it_find != m_observers.cend() ) PG_OBSERVER_LIKELY
         {
             m_observers.erase( it_find );
             delete o;
@@ -607,7 +613,7 @@ public:
     void disconnect( connection c ) noexcept
     {
         auto it_find = find_observer( c.m_h );
-        if( it_find != m_observers.cend() )
+        if( it_find != m_observers.cend() ) PG_OBSERVER_LIKELY
         {
             c.m_h->remove_from_subject();
             m_observers.erase( it_find );
